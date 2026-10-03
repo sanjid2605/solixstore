@@ -8,7 +8,7 @@ if (!items.length) {
   init();
 }
 
-const subtotal = () => items.reduce((n, i) => n + i.price * i.qty, 0);
+function subtotal () {returnitems.reduce((n, i) => n + i.price * i.qty, 0);}
 const $ = id => document.getElementById(id);
 
 async function api(url, opts) {
