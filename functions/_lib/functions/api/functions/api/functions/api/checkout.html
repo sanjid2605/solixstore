@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Checkout | SOLIX</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    input,select,textarea{width:100%;padding:12px;background:#1d1d22;color:var(--text);border:1px solid var(--line);border-radius:10px;font:inherit}
+    select:disabled{opacity:.5}
+    .field{margin-top:12px}
+    .field label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+    .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:16px}
+    .line{display:flex;justify-content:space-between;margin:6px 0}
+    .grand{font-size:1.2rem;font-weight:800;border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+    .done{text-align:center;padding:40px 10px}
+  </style>
+</head>
+<body>
+  <div id="header"></div>
+  <main class="container" style="max-width:560px">
+    <h2 style="margin-bottom:6px">Checkout</h2>
+    <div id="checkout"></div>
+  </main>
+  <div id="footer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script src="checkout.js"></script>
+</body>
+</html>
