@@ -1,7 +1,7 @@
 const root = document.getElementById("checkout");
 let items = Cart.get();
 let charge = null;
-
+const $ = id => document.getElementById(id);
 if (!items.length) {
   root.innerHTML = `<p class="empty">Your cart is empty.<br><br><a class="btn btn-primary" style="display:inline-block;padding:12px 24px" href="index.html">Shop now</a></p>`;
 } else {
@@ -9,7 +9,7 @@ if (!items.length) {
 }
 
 function subtotal () {return items.reduce((n, i) => n + i.price * i.qty, 0);}
-const $ = id => document.getElementById(id);
+
 
 async function api(url, opts) {
   const r = await fetch(url, opts);
