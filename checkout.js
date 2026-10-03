@@ -58,7 +58,7 @@ function init() {
 
   const city = $("c-city"), zone = $("c-zone"), area = $("c-area");
 
-  api("/aladdin/api/v1/city-list").then(d => fill(city, d.items, "Select city"))
+  api("https://courier-api-sandbox.pathao.com/aladdin/api/v1/city-list").then(d => fill(city, d.items, "Select city"))
     .catch(() => showToast("Could not load cities. Refresh the page."));
 
   city.onchange = async () => {
