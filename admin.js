@@ -31,7 +31,7 @@ async function init() {
 }
 $("login-btn").onclick = async () => {
   const { error } = await db.auth.signInWithPassword({ email: $("email").value.trim(), password: $("password").value });
-  if (error) return toast("Login failed. Check email and password.");
+ if (error) return toast("Login failed: " + error.message);
   showApp();
 };
 $("logout").onclick = async () => { await db.auth.signOut(); location.reload(); };
