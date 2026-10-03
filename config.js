@@ -1,6 +1,6 @@
 window.SOLIX_CONFIG = {
-  SUPABASE_URL: "এখানে Project URL বসান",
-  SUPABASE_KEY: "এখানে Publishable key বসান",
+  SUPABASE_URL: "https://qcxmykstrnmcwvrhbjkw.supabase.com",
+  SUPABASE_KEY: "sb_publishable_2mi__fC5Gf-NeoPrVHMYQQ_kyFHDk7K ",
   FACEBOOK_URL: "",   // পরে বসাবেন
   MESSENGER_URL: "",  // পরে বসাবেন
   PAGE_SIZE: 24,
