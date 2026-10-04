@@ -54,6 +54,6 @@ export async function getCharge(env, city, zone, weight) {
     recipient_zone: Number(zone)
   });
   const price = r.json && r.json.data && r.json.data.final_price;
-  if (!r.ok || typeof price !== "number") throw new Error("Could not get delivery charge");
+    if (!r.ok || typeof price !== "number") throw new Error("Charge failed: " + r.status + " " + JSON.stringify(r.json).slice(0, 300));
   return price;
 }
