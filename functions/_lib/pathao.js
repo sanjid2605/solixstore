@@ -24,7 +24,7 @@ async function getToken(env) {
     })
   });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok || !j.access_token) throw new Error("Pathao login failed");
+   if (!r.ok || !j.access_token) throw new Error("Pathao login failed: " + r.status + " " + String(j.message || j.error || "").slice(0, 120)); if (!r.ok || !j.access_token) throw new Error("Pathao login failed");
   cached = { token: j.access_token, exp: now + Math.max(60, (j.expires_in || 7200) - 3600) * 1000 };
   return cached.token;
 }
