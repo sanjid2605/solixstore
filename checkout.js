@@ -14,7 +14,7 @@ function $(id) { return document.getElementById(id); }
 async function api(url, opts) {
   const r = await fetch(url, opts);
   const j = await r.json().catch(() => ({}));
-   if (!r.ok) { console.log("API ERROR:", JSON.stringify(j)); throw new Error(j.error || "Something went wrong"); }
+     if (!r.ok) throw new Error(j.error || "Something went wrong");
   return j;
 }
 
