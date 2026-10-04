@@ -6,7 +6,7 @@ img{max-width:100%;display:block}
 button{font:inherit;cursor:pointer;border:0}
 
 .site-header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(11,11,13,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.logo img{height:101px;width:auto}
+.logo img{height:101px;width:101px;border-radius:50%;object-fit:cover}
 .logo span{font-weight:800;letter-spacing:3px;font-size:1.3rem}
 .cart-link{position:relative;padding:8px 14px;border:1px solid var(--line);border-radius:10px;font-weight:600}
 .cart-count{background:var(--accent);color:#000;border-radius:99px;padding:0 7px;font-size:.8rem;margin-left:6px}
