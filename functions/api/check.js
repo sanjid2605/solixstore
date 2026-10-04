@@ -10,3 +10,4 @@ export async function onRequestGet({ env }) {
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" }
   });
 }
+
