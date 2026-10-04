@@ -6,3 +6,5 @@ window.SOLIX_CONFIG = {
   PAGE_SIZE: 24,
   CURRENCY: "৳"
 };
+
+
