@@ -6,7 +6,7 @@ img{max-width:100%;display:block}
 button{font:inherit;cursor:pointer;border:0}
 
 .site-header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(11,11,13,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.logo img{height:101px;width:101px;border-radius:50%;object-fit:cover}
+.logo img{height:101px;width:auto}
 .logo span{font-weight:800;letter-spacing:3px;font-size:1.3rem}
 .cart-link{position:relative;padding:8px 14px;border:1px solid var(--line);border-radius:10px;font-weight:600}
 .cart-count{background:var(--accent);color:#000;border-radius:99px;padding:0 7px;font-size:.8rem;margin-left:6px}
@@ -72,5 +72,4 @@ button{font:inherit;cursor:pointer;border:0}
 .float-messenger{position:fixed;right:16px;bottom:16px;z-index:30;background:var(--accent);color:#000;font-weight:700;padding:12px 16px;border-radius:99px}
 .site-footer{border-top:1px solid var(--line);margin-top:40px;padding:20px 16px;text-align:center;color:var(--muted);font-size:.9rem}
 .site-footer a{margin:0 10px;text-decoration:underline}
-.site-header .logo{display:block;width:101px;height:101px;border-radius:50%;overflow:hidden;flex:0 0 auto}
-.site-header .logo img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}
+
