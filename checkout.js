@@ -1,15 +1,15 @@
 const root = document.getElementById("checkout");
 let items = Cart.get();
 let charge = null;
-const $ = id => document.getElementById(id);
+
 if (!items.length) {
   root.innerHTML = `<p class="empty">Your cart is empty.<br><br><a class="btn btn-primary" style="display:inline-block;padding:12px 24px" href="index.html">Shop now</a></p>`;
 } else {
   init();
 }
 
-function subtotal () {return items.reduce((n, i) => n + i.price * i.qty, 0);}
-
+const subtotal = () => items.reduce((n, i) => n + i.price * i.qty, 0);
+const $ = id => document.getElementById(id);
 
 async function api(url, opts) {
   const r = await fetch(url, opts);
@@ -58,7 +58,7 @@ function init() {
 
   const city = $("c-city"), zone = $("c-zone"), area = $("c-area");
 
-  api("https://courier-api-sandbox.pathao.com/aladdin/api/v1/city-list").then(d => fill(city, d.items, "Select city"))
+  api("/api/locations?type=cities").then(d => fill(city, d.items, "Select city"))
     .catch(() => showToast("Could not load cities. Refresh the page."));
 
   city.onchange = async () => {
