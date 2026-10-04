@@ -10,6 +10,6 @@ export async function onRequestPost({ request, env }) {
     const charge = await getCharge(env, b.city, b.zone);
     return json({ charge });
   } catch (e) {
-        return json({ error: "Could not calculate delivery charge", detail: String(e && e.message) }, 502);
+            return json({ error: "Could not calculate delivery charge" }, 502);
   }
 }
