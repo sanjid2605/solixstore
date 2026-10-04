@@ -50,6 +50,7 @@ function init() {
       <div class="line"><span>Delivery charge</span><span id="t-del"></span></div>
       <div class="line grand"><span>Total</span><span id="t-total"></span></div>
       <div class="muted" style="color:var(--muted);font-size:.85rem;margin-top:8px">Payment: Cash on Delivery</div>
+      ${C.MESSENGER_URL ? `<a class="msg-pay" href="${esc(C.MESSENGER_URL)}" target="_blank" rel="noopener"><span class="social-icon" style="margin:0;width:30px;height:30px">${ICON_MSG}</span><span>Want to pay with bKash? Message us on Messenger</span></a>` : ""}
     </div>
 
     <button class="btn btn-primary" id="place" style="width:100%;margin-top:16px">Place Order</button>`;
