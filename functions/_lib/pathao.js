@@ -24,7 +24,7 @@ async function getToken(env) {
     })
   });
   const j = await r.json().catch(() => ({}));
-   if (!r.ok || !j.access_token) throw new Error("Pathao login failed: " + r.status + " " + String(j.message || j.error || "").slice(0, 120)); if (!r.ok || !j.access_token) throw new Error("Pathao login failed");
+     if (!r.ok || !j.access_token) throw new Error("Pathao login failed");
   cached = { token: j.access_token, exp: now + Math.max(60, (j.expires_in || 7200) - 3600) * 1000 };
   return cached.token;
 }
@@ -54,6 +54,6 @@ export async function getCharge(env, city, zone, weight) {
     recipient_zone: Number(zone)
   });
   const price = r.json && r.json.data && r.json.data.final_price;
-    if (!r.ok || typeof price !== "number") throw new Error("Charge failed: " + r.status + " " + JSON.stringify(r.json).slice(0, 300));
+      if (!r.ok || typeof price !== "number") throw new Error("Could not get delivery charge");
   return price;
 }
