@@ -25,6 +25,6 @@ export async function onRequestGet({ request, env }) {
       .sort((a, b) => a.name.localeCompare(b.name));
     return json({ items }, 200, { "Cache-Control": "public, max-age=3600" });
   } catch (e) {
-        return json({ error: "Delivery service unavailable", detail: String(e && e.message) }, 502);
+            return json({ error: "Delivery service unavailable" }, 502);
   }
 }
