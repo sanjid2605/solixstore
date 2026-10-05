@@ -107,3 +107,30 @@ body{background:#07070a radial-gradient(1200px 600px at 50% -10%,#1d1d29 0%,#070
 .msg-pay{display:flex;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(0,153,255,.16),rgba(160,51,255,.16));border:1px solid rgba(160,51,255,.55);color:#fff;font-size:.88rem;line-height:1.5;box-shadow:0 0 22px rgba(160,51,255,.25)}
 .msg-pay b{color:#ffd86b;font-size:.95rem}
 #place{padding:18px;font-size:1.15rem;margin-top:24px;letter-spacing:.5px}
+/* ===== MOBILE + AESTHETIC ===== */
+body{min-height:100vh;background-color:#0a0a10;background-repeat:no-repeat;background-image:radial-gradient(900px 520px at 12% -5%,rgba(245,197,66,.16),transparent 62%),radial-gradient(800px 520px at 100% 8%,rgba(125,90,255,.2),transparent 62%);color:#fff}
+.card{background:#171721;border:1px solid rgba(255,255,255,.15)}
+.card-name{color:#fff;font-weight:600}
+.card-price{color:#ffd24d;font-weight:800}
+.old{color:#a0a0b0}
+.label{color:#d4d4e0}
+.size{background:#1d1d29;border-color:rgba(255,255,255,.22)}
+input,select,textarea{background:#1d1d29!important;border-color:rgba(255,255,255,.22)!important}
+.card:active{transform:scale(.98)}
+
+@media(max-width:640px){
+  .container{padding:12px}
+  .site-header{padding:8px 12px}
+  .site-header .logo{width:68px;height:68px}
+  .grid{gap:10px}
+  .card{border-radius:14px}
+  .card-body{padding:9px 10px 12px}
+  .card-name{font-size:.88rem}
+  .card-price{font-size:1rem}
+  .gallery{border-radius:16px;padding:8px}
+  .info h1{font-size:1.2rem}
+  .price{font-size:1.4rem}
+  .size{min-width:58px;padding:11px 12px}
+  .info .actions{position:fixed;left:0;right:0;bottom:0;z-index:25;margin:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(10,10,16,.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.14)}
+  .product{padding-bottom:96px}
+}
