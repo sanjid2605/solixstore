@@ -120,6 +120,16 @@ export async function onRequestPost({ request, env }) {
     method: "PATCH",
     body: JSON.stringify({ pathao_consignment_id: consignment ? String(consignment) : null, pathao_status: status })
   });
-
+   try {
+    if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
+      const lines = orderItems.map(i => `${i.name}${i.size ? " (" + i.size + ")" : ""} x${i.qty}`).join("\n");
+      const text = `New order #${order.id.slice(0, 8).toUpperCase()}\n${name}\n${phone}\n${[address, areaName, zoneName, cityName].filter(Boolean).join(", ")}\n\n${lines}\n\nTotal (COD): ${total}\nPathao: ${status}`;
+      await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text })
+      });
+    }
+  } catch (e) {}
   return json({ ok: true, orderNo: order.id.slice(0, 8).toUpperCase(), subtotal, charge, total });
 }
