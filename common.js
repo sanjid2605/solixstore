@@ -53,3 +53,33 @@ function renderChrome() {
 }
 
 document.addEventListener("DOMContentLoaded", renderChrome);
+(function () {
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const bg = document.createElement("div");
+  bg.className = "glow-bg";
+  bg.innerHTML = '<span class="g1"></span><span class="g2"></span><span class="g3"></span>';
+  document.body.prepend(bg);
+  const g = bg.children;
+  let ticking = false;
+
+  function place(el, phase, k, a, R) {
+    const x = Math.cos(a + phase) * R * k;
+    const y = Math.sin(a + phase) * R * k;
+    el.style.transform = "translate3d(" + x + "px," + y + "px,0)";
+  }
+
+  function update() {
+    ticking = false;
+    const a = (window.scrollY || 0) / 420;
+    const R = Math.min(window.innerWidth, window.innerHeight) * 0.38;
+    place(g[0], 0, 1, a, R);
+    place(g[1], 2.1, 1, a, R);
+    place(g[2], 4.2, 0.8, a, R);
+  }
+
+  window.addEventListener("scroll", function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(update); }
+  }, { passive: true });
+  window.addEventListener("resize", update);
+  update();
+})();
