@@ -113,3 +113,8 @@ input,select,textarea{background:#1d1d29!important;border-color:rgba(255,255,255
   .info .actions{position:fixed;left:0;right:0;bottom:0;z-index:25;margin:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(10,10,16,.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.14)}
   .product{padding-bottom:96px}
 }
+.glow-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.glow-bg span{position:absolute;left:50%;top:50%;width:70vmax;height:70vmax;margin:-35vmax 0 0 -35vmax;border-radius:50%;will-change:transform;opacity:.6;transition:transform .35s ease-out}
+.glow-bg .g1{background:radial-gradient(circle,rgba(245,197,66,.55) 0%,rgba(245,197,66,0) 62%)}
+.glow-bg .g2{background:radial-gradient(circle,rgba(125,90,255,.55) 0%,rgba(125,90,255,0) 62%)}
+.glow-bg .g3{background:radial-gradient(circle,rgba(0,170,255,.4) 0%,rgba(0,170,255,0) 62%)}
