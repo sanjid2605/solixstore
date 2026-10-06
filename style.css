@@ -150,3 +150,11 @@ html{scroll-behavior:smooth}
 .reveal{opacity:0;transform:translateY(36px) scale(.98);transition:opacity .7s ease,transform .8s cubic-bezier(.22,.8,.3,1);will-change:opacity,transform}
 .reveal.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+.reveal{opacity:0;transform:translateY(36px) scale(.98);transition:opacity .7s ease,transform .8s cubic-bezier(.22,.8,.3,1);will-change:opacity,transform}
+.reveal.in{opacity:1;transform:none}
+.reveal.in.settled{transition:opacity .3s ease,transform .3s ease,box-shadow .3s ease,border-color .3s ease}
+@media (hover:hover){
+  .card.reveal.in:hover{transform:translateY(-10px);border-color:rgba(255,255,255,.6);box-shadow:0 20px 55px rgba(255,255,255,.3),0 0 70px rgba(255,255,255,.18)}
+}
+.card.reveal.in:active{transform:scale(.98)}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
