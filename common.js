@@ -109,3 +109,43 @@ document.addEventListener("DOMContentLoaded", renderChrome);
   window.addEventListener("resize", update);
   update();
 })();
+(function () {
+  if (!("IntersectionObserver" in window)) return;
+  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const SEL = ".card,.hero,.search-wrap,.gallery,.cart-item,.box,.foot-grid,.pager";
+
+  const io = new IntersectionObserver(function (entries) {
+    let n = 0;
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      const el = en.target;
+      io.unobserve(el);
+      const d = n++ * 70;
+      el.style.transitionDelay = d + "ms";
+      el.classList.add("in");
+      setTimeout(function () {
+        el.classList.remove("reveal", "in");
+        el.style.transitionDelay = "";
+      }, 1000 + d);
+    });
+  }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
+
+  function prep(el) {
+    if (el.dataset.rv) return;
+    el.dataset.rv = "1";
+    el.classList.add("reveal");
+    io.observe(el);
+  }
+  function scan(root) {
+    if (root.matches && root.matches(SEL)) prep(root);
+    if (root.querySelectorAll) root.querySelectorAll(SEL).forEach(prep);
+  }
+
+  new MutationObserver(function (list) {
+    list.forEach(function (r) {
+      r.addedNodes.forEach(function (nd) { if (nd.nodeType === 1) scan(nd); });
+    });
+  }).observe(document.body, { childList: true, subtree: true });
+
+  scan(document.body);
+})();
