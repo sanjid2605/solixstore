@@ -33,13 +33,15 @@ function showToast(msg, ok) {
 }
 
 function renderChrome() {
-  const h = document.getElementById("header");
+   const h = document.getElementById("header");
+  const isShop = !!document.getElementById("grid");
   if (h) h.innerHTML = `
     <header class="site-header">
       <a class="logo" href="index.html">
         <img src="logo.png" alt="SOLIX"
           onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'SOLIX'}))">
       </a>
+      ${isShop ? `<div class="head-search"><input id="search" type="search" placeholder="জার্সি খুঁজুন..." autocomplete="off" enterkeyhint="search"></div>` : ""}
       <a class="cart-link" href="cart.html">Cart <span class="cart-count" id="cart-count">0</span></a>
     </header>`;
 
@@ -77,7 +79,7 @@ function renderChrome() {
   updateCartCount();
 }
 
-document.addEventListener("DOMContentLoaded", renderChrome);
+renderChrome();
 
 (function () {
   if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
