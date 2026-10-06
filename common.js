@@ -112,21 +112,27 @@ document.addEventListener("DOMContentLoaded", renderChrome);
 (function () {
   if (!("IntersectionObserver" in window)) return;
   if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  const SEL = ".card,.hero,.search-wrap,.gallery,.cart-item,.box,.foot-grid,.pager";
+  const SEL = ".card,.hero,.gallery,.cart-item,.box,.foot-grid,.pager";
+  const timers = new WeakMap();
 
   const io = new IntersectionObserver(function (entries) {
     let n = 0;
     entries.forEach(function (en) {
-      if (!en.isIntersecting) return;
       const el = en.target;
-      io.unobserve(el);
-      const d = n++ * 70;
-      el.style.transitionDelay = d + "ms";
-      el.classList.add("in");
-      setTimeout(function () {
-        el.classList.remove("reveal", "in");
+      clearTimeout(timers.get(el));
+      if (en.isIntersecting) {
+        const d = n++ * 70;
+        el.classList.remove("settled");
+        el.style.transitionDelay = d + "ms";
+        el.classList.add("in");
+        timers.set(el, setTimeout(function () {
+          el.style.transitionDelay = "";
+          el.classList.add("settled");
+        }, 900 + d));
+      } else {
+        el.classList.remove("in", "settled");
         el.style.transitionDelay = "";
-      }, 1000 + d);
+      }
     });
   }, { threshold: 0.12, rootMargin: "0px 0px -6% 0px" });
 
