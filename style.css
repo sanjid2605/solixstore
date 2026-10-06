@@ -118,3 +118,29 @@ input,select,textarea{background:#1d1d29!important;border-color:rgba(255,255,255
 .glow-bg .g1{background:radial-gradient(circle,rgba(245,197,66,.55) 0%,rgba(245,197,66,0) 62%)}
 .glow-bg .g2{background:radial-gradient(circle,rgba(125,90,255,.55) 0%,rgba(125,90,255,0) 62%)}
 .glow-bg .g3{background:radial-gradient(circle,rgba(0,170,255,.4) 0%,rgba(0,170,255,0) 62%)}
+/* footer like reference */
+.foot-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:28px;max-width:1100px;margin:0 auto;text-align:left;align-items:start}
+.foot-care h4,.foot-brand h4{font-size:1rem;letter-spacing:1px;color:#fff;margin-bottom:12px}
+.care-link{display:flex;align-items:center;gap:12px;padding:8px 0;color:#e6e6ef;font-size:.98rem}
+.care-link .ci{width:30px;height:30px;flex:0 0 30px}
+.care-link:hover{color:#fff}
+.foot-brand{text-align:center}
+.foot-logo{width:96px;height:96px;border-radius:50%;object-fit:cover;margin:0 auto 12px}
+.foot-brand p{color:#c8c8d4;max-width:320px;margin:0 auto 18px}
+.foot-social{display:flex;justify-content:center;gap:12px}
+.foot-social .social-icon{margin:0}
+.foot-copy{margin-top:26px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);color:#8d8d9c;font-size:.85rem}
+@media(max-width:700px){
+  .foot-grid{grid-template-columns:1fr;gap:22px}
+  .foot-brand{order:-1}
+}
+
+/* floating messenger button (bottom-right) */
+.float-messenger{position:fixed;right:16px;bottom:18px;z-index:30;width:58px;height:58px;padding:0;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 22px rgba(0,0,0,.5),0 0 24px rgba(160,51,255,.35);transition:transform .2s}
+.float-messenger:hover{transform:scale(1.08)}
+.float-messenger svg{width:34px;height:34px}
+@media(max-width:640px){.float-messenger{bottom:92px}}
+
+/* top poster */
+.hero{display:block;margin:0 0 16px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 40px rgba(0,0,0,.5)}
+.hero img{width:100%;height:auto;max-height:520px;object-fit:cover;display:block}
