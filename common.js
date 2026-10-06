@@ -45,14 +45,40 @@ function renderChrome() {
 
   const f = document.getElementById("footer");
   if (f) {
-    let icons = "";
-    if (C.FACEBOOK_URL) icons += `<a class="social-icon" href="${esc(C.FACEBOOK_URL)}" target="_blank" rel="noopener" aria-label="Facebook">${ICON_FB}</a>`;
-    f.innerHTML = `<footer class="site-footer"><div style="margin-bottom:8px">${icons}</div><div>© SOLIX</div></footer>`;
+    let care = "", share = "";
+    if (C.FACEBOOK_URL) {
+      const u = esc(C.FACEBOOK_URL);
+      care += `<a class="care-link" href="${u}" target="_blank" rel="noopener"><span class="ci">${ICON_FB}</span><span>Facebook Page</span></a>`;
+      share += `<a class="social-icon" href="${u}" target="_blank" rel="noopener" aria-label="Facebook">${ICON_FB}</a>`;
+    }
+    if (C.MESSENGER_URL) {
+      const m = esc(C.MESSENGER_URL);
+      care += `<a class="care-link" href="${m}" target="_blank" rel="noopener"><span class="ci">${ICON_MSG}</span><span>Messenger</span></a>`;
+      share += `<a class="social-icon" href="${m}" target="_blank" rel="noopener" aria-label="Messenger">${ICON_MSG}</a>`;
+    }
+    f.innerHTML = `
+      <footer class="site-footer">
+        <div class="foot-grid">
+          <div class="foot-care">
+            <h4>CUSTOMER CARE</h4>
+            ${care}
+          </div>
+          <div class="foot-brand">
+            <img class="foot-logo" src="logo.png" alt="SOLIX" onerror="this.style.display='none'">
+            <p>Jerseys &amp; more, delivered to your door.</p>
+            ${share ? `<h4>SHARE WITH</h4><div class="foot-social">${share}</div>` : ""}
+          </div>
+          <div></div>
+        </div>
+        <div class="foot-copy">© SOLIX</div>
+      </footer>
+      ${C.MESSENGER_URL ? `<a class="float-messenger" href="${esc(C.MESSENGER_URL)}" target="_blank" rel="noopener" aria-label="Messenger">${ICON_MSG}</a>` : ""}`;
   }
   updateCartCount();
 }
 
 document.addEventListener("DOMContentLoaded", renderChrome);
+
 (function () {
   if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const bg = document.createElement("div");
