@@ -14,7 +14,7 @@ function $(id) { return document.getElementById(id); }
 async function api(url, opts) {
   const r = await fetch(url, opts);
   const j = await r.json().catch(() => ({}));
-     if (!r.ok) throw new Error(j.error || "Something went wrong");
+  if (!r.ok) throw new Error(j.error || "Something went wrong");
   return j;
 }
 
@@ -50,12 +50,13 @@ function init() {
       <div class="line"><span>Delivery charge</span><span id="t-del"></span></div>
       <div class="line grand"><span>Total</span><span id="t-total"></span></div>
       <div class="muted" style="color:var(--muted);font-size:.85rem;margin-top:8px">Payment: Cash on Delivery</div>
-           ${C.MESSENGER_URL ? `<a class="msg-pay" href="${esc(C.MESSENGER_URL)}" target="_blank" rel="noopener"><span class="social-icon" style="margin:0;width:34px;height:34px;flex:0 0 34px">${ICON_MSG}</span><span><b>বিকাশে পেমেন্ট করতে চান?</b><br>আগে আমাদের Messenger-এ মেসেজ দিন</span></a>` : ""}
+      ${C.MESSENGER_URL ? `<a class="msg-pay" href="${esc(C.MESSENGER_URL)}" target="_blank" rel="noopener"><span class="social-icon" style="margin:0;width:34px;height:34px;flex:0 0 34px">${ICON_MSG}</span><span><b>বিকাশে পেমেন্ট করতে চান?</b><br>আগে আমাদের Messenger-এ মেসেজ দিন</span></a>` : ""}
     </div>
 
     <button class="btn btn-primary" id="place" style="width:100%;margin-top:16px">Place Order</button>`;
 
   renderTotals();
+  track("begin_checkout", { value: subtotal(), items: items.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })) });
 
   const city = $("c-city"), zone = $("c-zone"), area = $("c-area");
 
@@ -112,6 +113,7 @@ function init() {
         })
       });
       localStorage.removeItem(Cart.key);
+      track("purchase", { value: res.total, items: items.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })) });
       updateCartCount();
       root.innerHTML = `
         <div class="done">
@@ -124,6 +126,7 @@ function init() {
     } catch (e) {
       showToast(e.message);
       btn.disabled = false; btn.textContent = "Place Order";
+      if (/stock|available/i.test(e.message)) setTimeout(() => { location.href = "cart.html"; }, 2500);
     }
   };
 }
