@@ -33,7 +33,7 @@ function showToast(msg, ok) {
 }
 
 function renderChrome() {
-   const h = document.getElementById("header");
+  const h = document.getElementById("header");
   const isShop = !!document.getElementById("grid");
   if (h) h.innerHTML = `
     <header class="site-header">
@@ -81,8 +81,8 @@ function renderChrome() {
 
 renderChrome();
 
+/* ---------- glowing background ---------- */
 (function () {
-  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const bg = document.createElement("div");
   bg.className = "glow-bg";
   bg.innerHTML = '<span class="g1"></span><span class="g2"></span><span class="g3"></span>';
@@ -111,9 +111,10 @@ renderChrome();
   window.addEventListener("resize", update);
   update();
 })();
+
+/* ---------- scroll reveal ---------- */
 (function () {
   if (!("IntersectionObserver" in window)) return;
-  if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const SEL = ".card,.hero,.gallery,.cart-item,.box,.foot-grid,.pager";
   const timers = new WeakMap();
 
@@ -157,3 +158,40 @@ renderChrome();
 
   scan(document.body);
 })();
+
+/* ---------- tracking: Meta Pixel + Google Analytics ---------- */
+(function () {
+  const px = C.META_PIXEL_ID, ga = C.GA_ID;
+  if (px) {
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', px);
+    fbq('track', 'PageView');
+  }
+  if (ga) {
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(ga);
+    document.head.appendChild(s);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { dataLayer.push(arguments); };
+    gtag('js', new Date());
+    gtag('config', ga);
+  }
+})();
+
+function track(name, p) {
+  try {
+    p = p || {};
+    const val = Number(p.value || 0), cur = 'BDT', items = p.items || [];
+    if (window.fbq) {
+      const ids = items.map(i => i.id);
+      if (name === 'view_item') fbq('track', 'ViewContent', { content_ids: ids, content_type: 'product', value: val, currency: cur });
+      if (name === 'add_to_cart') fbq('track', 'AddToCart', { content_ids: ids, content_type: 'product', value: val, currency: cur });
+      if (name === 'begin_checkout') fbq('track', 'InitiateCheckout', { value: val, currency: cur, num_items: items.length });
+      if (name === 'purchase') fbq('track', 'Purchase', { value: val, currency: cur });
+    }
+    if (window.gtag) {
+      gtag('event', name, { value: val, currency: cur, items: items.map(i => ({ item_id: i.id, item_name: i.name, price: i.price, quantity: i.qty || 1 })) });
+    }
+  } catch (e) {}
+}
