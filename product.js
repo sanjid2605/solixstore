@@ -31,6 +31,7 @@ async function load() {
   (sz.data || []).forEach(r => { stockBySize[r.size] = r.stock; });
   document.title = P.name + " | SOLIX";
   render();
+  track("view_item", { value: P.price, items: [{ id: P.id, name: P.name, price: Number(P.price), qty: 1 }] });
 }
 
 function render() {
@@ -112,6 +113,7 @@ function addToCart() {
   if (line) line.qty++;
   else items.push({ id: P.id, name: P.name, image: images[0] || "", size, qty: 1, price: Number(P.price) });
   Cart.save(items);
+  track("add_to_cart", { value: P.price, items: [{ id: P.id, name: P.name, price: Number(P.price), qty: 1 }] });
   return true;
 }
 
