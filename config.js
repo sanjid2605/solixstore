@@ -4,7 +4,9 @@ window.SOLIX_CONFIG = {
   FACEBOOK_URL: "https://www.facebook.com/share/19ysXt6uxk/",   // পরে বসাবেন
   MESSENGER_URL: "https://m.me/solixbd",  // পরে বসাবেন
   PAGE_SIZE: 24,
-  CURRENCY: "৳"
+  CURRENCY: "৳",
+   META_PIXEL_ID: "956224950380792",
+  GA_ID: ""
 };
 
 
