@@ -4,12 +4,28 @@ let q = "";
 let tab = "all";
 let reqId = 0;
 let offerLive = false;
+let heroReady = false;
 let cdTimer = null;
+let heroTimer = null;
 
 const grid = document.getElementById("grid");
 const pager = document.getElementById("pager");
-const hero = document.querySelector(".hero");
-const offerBox = document.getElementById("offer");
+const heroBox = document.getElementById("hero");
+const offersBox = document.getElementById("offers");
+
+/* add ?debug to the address to see what the page loaded: solixbd.me/?debug */
+const DEBUG = location.search.indexOf("debug") !== -1;
+function dbg(m) {
+  if (!DEBUG) return;
+  let b = document.getElementById("dbg");
+  if (!b) {
+    b = document.createElement("pre");
+    b.id = "dbg";
+    b.style.cssText = "position:fixed;bottom:8px;left:8px;right:8px;max-height:40vh;overflow:auto;z-index:99;background:#000;color:#0f0;font-size:12px;padding:8px;border-radius:8px;white-space:pre-wrap";
+    document.body.appendChild(b);
+  }
+  b.textContent += m + "\n";
+}
 
 const TAG_LABEL = { top: "TOP SELLING", new: "NEW", featured: "FEATURED" };
 
@@ -40,10 +56,11 @@ function cardHtml(p, forceOffer) {
 
 function updateTop() {
   const show = q === "" && tab === "all";
-  if (hero) hero.classList.toggle("hidden", !show);
-  offerBox.classList.toggle("hidden", !(show && offerLive));
+  heroBox.classList.toggle("hidden", !(show && heroReady));
+  offersBox.classList.toggle("hidden", !(show && offerLive));
 }
 
+/* ---------- products ---------- */
 async function loadProducts() {
   const my = ++reqId;
   const from = (page - 1) * C.PAGE_SIZE;
@@ -61,6 +78,7 @@ async function loadProducts() {
   if (my !== reqId) return;
 
   if (error) {
+    dbg("products error: " + error.message);
     grid.innerHTML = `<p class="empty">Could not load products.</p>`;
     pager.innerHTML = "";
     return;
@@ -84,56 +102,121 @@ async function loadProducts() {
   if (next) next.onclick = () => { page++; loadProducts(); window.scrollTo(0, 0); };
 }
 
-/* ---------- offer section ---------- */
+/* ---------- top picture(s) ---------- */
+function renderHero(urls) {
+  heroBox.innerHTML = `
+    <div class="hero-track">${urls.map((u, i) =>
+      `<a class="slide${i === 0 ? " on" : ""}" href="#grid"><img src="${esc(u)}" alt="" ${i ? 'loading="lazy"' : ""}></a>`).join("")}</div>
+    ${urls.length > 1 ? `<div class="hero-dots">${urls.map((_, i) =>
+      `<button type="button" data-i="${i}" class="${i === 0 ? "on" : ""}" aria-label="Picture ${i + 1}"></button>`).join("")}</div>` : ""}`;
+
+  const first = heroBox.querySelector("img");
+  if (urls.length === 1) {
+    first.addEventListener("error", () => { heroReady = false; heroBox.innerHTML = ""; updateTop(); });
+  }
+  heroReady = true;
+  updateTop();
+  if (urls.length < 2) return;
+
+  const slides = heroBox.querySelectorAll(".slide");
+  const dots = heroBox.querySelectorAll(".hero-dots button");
+  let cur = 0;
+  const go = n => {
+    cur = (n + slides.length) % slides.length;
+    slides.forEach((s, i) => s.classList.toggle("on", i === cur));
+    dots.forEach((d, i) => d.classList.toggle("on", i === cur));
+  };
+  const start = () => { clearInterval(heroTimer); heroTimer = setInterval(() => go(cur + 1), 5000); };
+  dots.forEach(d => { d.onclick = ev => { ev.preventDefault(); go(Number(d.dataset.i)); start(); }; });
+
+  let x0 = null;
+  heroBox.addEventListener("touchstart", ev => { x0 = ev.touches[0].clientX; }, { passive: true });
+  heroBox.addEventListener("touchend", ev => {
+    if (x0 === null) return;
+    const dx = ev.changedTouches[0].clientX - x0;
+    if (Math.abs(dx) > 40) { go(cur + (dx < 0 ? 1 : -1)); start(); }
+    x0 = null;
+  });
+  start();
+}
+
+async function loadHero() {
+  let urls = [];
+  try {
+    const { data, error } = await db.from("banners").select("url").order("position", { ascending: true });
+    if (error) dbg("banners error: " + error.message);
+    urls = (data || []).map(r => r.url);
+    dbg("banners found: " + urls.length);
+  } catch (e) { dbg("banners crash: " + e.message); }
+  if (!urls.length) urls = ["poster.jpg"];
+  renderHero(urls);
+}
+
+/* ---------- offers (many) ---------- */
 const p2 = n => String(n).padStart(2, "0");
 
-function startCountdown(end) {
-  clearInterval(cdTimer);
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  const tick = () => {
-    let s = Math.floor((end - Date.now()) / 1000);
-    if (s <= 0) {
-      clearInterval(cdTimer);
-      offerLive = false;
-      updateTop();
-      return;
-    }
+function offerHtml(c, items) {
+  return `
+    <section class="offer" data-end="${new Date(c.ends_at).getTime()}">
+      <div class="offer-head">
+        <div class="offer-title"><small>🔥 চলমান অফার</small>${esc(c.title)}</div>
+        <div class="cd">
+          <div><b class="cd-d">00</b><span>দিন</span></div>
+          <div><b class="cd-h">00</b><span>ঘণ্টা</span></div>
+          <div><b class="cd-m">00</b><span>মিনিট</span></div>
+          <div><b class="cd-s">00</b><span>সেকেন্ড</span></div>
+        </div>
+      </div>
+      <div class="offer-row">${items.map(p => cardHtml(p, true)).join("")}</div>
+    </section>`;
+}
+
+function tickOffers() {
+  const now = Date.now();
+  let left = 0;
+  offersBox.querySelectorAll(".offer").forEach(el => {
+    let s = Math.floor((Number(el.dataset.end) - now) / 1000);
+    if (s <= 0) { el.remove(); return; }
+    left++;
     const d = Math.floor(s / 86400); s %= 86400;
     const h = Math.floor(s / 3600); s %= 3600;
     const m = Math.floor(s / 60); s %= 60;
-    set("cd-d", p2(d)); set("cd-h", p2(h)); set("cd-m", p2(m)); set("cd-s", p2(s));
-  };
-  tick();
-  cdTimer = setInterval(tick, 1000);
+    el.querySelector(".cd-d").textContent = p2(d);
+    el.querySelector(".cd-h").textContent = p2(h);
+    el.querySelector(".cd-m").textContent = p2(m);
+    el.querySelector(".cd-s").textContent = p2(s);
+  });
+  if (!left) { clearInterval(cdTimer); offerLive = false; updateTop(); }
 }
 
-async function loadOffer() {
+async function loadOffers() {
   try {
-    const { data: o } = await db.from("offers").select("*").eq("id", 1).maybeSingle();
-    if (!o || !o.is_active || !o.ends_at) return;
-    const end = new Date(o.ends_at).getTime();
-    if (!(end > Date.now())) return;
+    const c = await db.from("campaigns").select("*")
+      .eq("is_active", true).gt("ends_at", new Date().toISOString()).order("ends_at", { ascending: true });
+    if (c.error) { dbg("offers error: " + c.error.message); return; }
+    const cs = c.data || [];
+    dbg("live offers: " + cs.length);
+    if (!cs.length) return;
 
-    const { data: items } = await db
-      .from("product_list").select("*").eq("in_offer", true)
-      .order("created_at", { ascending: false }).limit(24);
-    if (!items || !items.length) return;
+    const p = await db.from("product_list").select("*")
+      .in("offer_id", cs.map(x => x.id)).order("created_at", { ascending: false });
+    if (p.error) { dbg("offer products error: " + p.error.message); return; }
+    const items = p.data || [];
+    dbg("offer products: " + items.length);
 
-    offerBox.innerHTML = `
-      <div class="offer-head">
-        <div class="offer-title"><small>🔥 চলমান অফার</small>${esc(o.title || "Special Offer")}</div>
-        <div class="cd">
-          <div><b id="cd-d">00</b><span>দিন</span></div>
-          <div><b id="cd-h">00</b><span>ঘণ্টা</span></div>
-          <div><b id="cd-m">00</b><span>মিনিট</span></div>
-          <div><b id="cd-s">00</b><span>সেকেন্ড</span></div>
-        </div>
-      </div>
-      <div class="offer-row">${items.map(p => cardHtml(p, true)).join("")}</div>`;
+    const html = cs.map(o => {
+      const mine = items.filter(i => i.offer_id === o.id);
+      return mine.length ? offerHtml(o, mine) : "";
+    }).join("");
+    if (!html) return;
+
+    offersBox.innerHTML = html;
     offerLive = true;
     updateTop();
-    startCountdown(end);
-  } catch (e) {}
+    tickOffers();
+    clearInterval(cdTimer);
+    cdTimer = setInterval(tickOffers, 1000);
+  } catch (e) { dbg("offers crash: " + e.message); }
 }
 
 /* ---------- tabs ---------- */
@@ -161,4 +244,5 @@ document.getElementById("search").addEventListener("input", e => {
 });
 
 loadProducts();
-loadOffer();
+loadHero();
+loadOffers();

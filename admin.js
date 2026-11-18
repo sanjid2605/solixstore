@@ -64,10 +64,11 @@ document.querySelectorAll(".tab[data-tab]").forEach(b => {
   b.onclick = () => {
     document.querySelectorAll(".tab[data-tab]").forEach(x => x.classList.remove("active"));
     b.classList.add("active");
-    ["products", "orders", "sales", "offer"].forEach(n => $("tab-" + n).classList.toggle("hidden", n !== b.dataset.tab));
+    ["products", "orders", "sales", "offer", "banner"].forEach(n => $("tab-" + n).classList.toggle("hidden", n !== b.dataset.tab));
     if (b.dataset.tab === "orders") { newCount = 0; $("order-badge").classList.add("hidden"); loadOrders(); }
     if (b.dataset.tab === "sales") loadSales();
     if (b.dataset.tab === "offer") loadOfferTab();
+    if (b.dataset.tab === "banner") loadBanners();
   };
 });
 
@@ -262,14 +263,15 @@ $("f-files").onchange = e => {
 };
 
 /* ---------- images ---------- */
-async function shrink(file) {
+async function shrinkTo(file, max, quality) {
   const bmp = await createImageBitmap(file);
-  const r = Math.min(1, 1200 / Math.max(bmp.width, bmp.height));
+  const r = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const c = document.createElement("canvas");
   c.width = Math.round(bmp.width * r); c.height = Math.round(bmp.height * r);
   c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-  return new Promise(res => c.toBlob(res, "image/webp", 0.82));
+  return new Promise(res => c.toBlob(res, "image/webp", quality));
 }
+const shrink = f => shrinkTo(f, 1200, 0.82);
 async function removeFiles(urls) {
   const paths = urls.map(u => (u.split("/product-images/")[1] || "")).filter(Boolean);
   if (paths.length) await db.storage.from("product-images").remove(paths);
@@ -520,78 +522,208 @@ $("s-monthly").onclick = e => {
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
-/* ================= OFFER ================= */
-let offSel = new Set(), offAll = [];
+/* ================= OFFERS (many offers) ================= */
+let offList = [], offProducts = [], offSel = new Set(), editingOffer = null;
 
+function fmtDT(iso) {
+  return new Date(iso).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 function toLocalInput(iso) {
   const d = new Date(iso);
   return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()) + "T" + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
 }
 
-function renderOfferList() {
-  const f = $("o-search").value.trim().toLowerCase();
-  const list = offAll.filter(p => !f || p.name.toLowerCase().includes(f));
-  $("o-list").innerHTML = list.length
-    ? list.map(p => `<label><input type="checkbox" data-oid="${p.id}" ${offSel.has(p.id) ? "checked" : ""}> ${esc(p.name)}</label>`).join("")
-    : `<p class="muted" style="padding:10px 0">No products found.</p>`;
-  $("o-count").textContent = offSel.size;
-}
-
 async function loadOfferTab() {
-  const { data: o } = await db.from("offers").select("*").eq("id", 1).maybeSingle();
-  $("o-active").checked = !!(o && o.is_active);
-  $("o-title").value = (o && o.title) || "";
-  $("o-end").value = o && o.ends_at ? toLocalInput(o.ends_at) : "";
-
-  let status = "No offer is running.";
-  if (o && o.is_active && o.ends_at) {
-    status = new Date(o.ends_at) > new Date()
-      ? "Offer is LIVE until " + new Date(o.ends_at).toLocaleString()
-      : "The offer time has ended. Set a new end time to run it again.";
+  const c = await db.from("campaigns").select("*").order("ends_at", { ascending: false });
+  if (c.error) {
+    $("ol-wrap").innerHTML = `<p class="empty">Could not load offers. Did you run the new SQL? (${esc(c.error.message)})</p>`;
+    return;
   }
-  $("o-status").textContent = status;
+  offList = c.data || [];
+  const p = await db.from("products").select("offer_id").not("offer_id", "is", null).limit(5000);
+  const counts = {};
+  (p.data || []).forEach(r => { counts[r.offer_id] = (counts[r.offer_id] || 0) + 1; });
 
-  const { data: ps } = await db.from("products").select("id,name,in_offer").order("created_at", { ascending: false }).limit(1000);
-  offAll = ps || [];
-  offSel = new Set(offAll.filter(p => p.in_offer).map(p => p.id));
-  renderOfferList();
+  $("ol-wrap").innerHTML = offList.length ? offList.map(o => {
+    const ended = new Date(o.ends_at) <= new Date();
+    const st = !o.is_active ? ["OFF", "st-off"] : ended ? ["ENDED", "st-end"] : ["LIVE", "st-live"];
+    return `
+      <div class="ocard">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+          <b>${esc(o.title)}</b><span class="st ${st[1]}">${st[0]}</span>
+        </div>
+        <div class="muted">Ends: ${esc(fmtDT(o.ends_at))}</div>
+        <div class="muted">${counts[o.id] || 0} product(s)</div>
+        <div style="margin-top:8px">
+          <button class="mini" data-oa="edit" data-id="${o.id}">Edit</button>
+          <button class="mini danger" data-oa="del" data-id="${o.id}">Delete</button>
+        </div>
+      </div>`;
+  }).join("") : `<p class="empty">No offers yet. Press + New offer.</p>`;
 }
-$("o-search").oninput = renderOfferList;
-$("o-list").onchange = e => {
-  const cb = e.target.closest("input[data-oid]");
+
+function renderOfferPicker() {
+  const f = $("oc-search").value.trim().toLowerCase();
+  const titleOf = {};
+  offList.forEach(o => { titleOf[o.id] = o.title; });
+  const list = offProducts.filter(p => !f || p.name.toLowerCase().includes(f));
+  $("oc-list").innerHTML = list.length
+    ? list.map(p => {
+        const other = p.offer_id && p.offer_id !== editingOffer && titleOf[p.offer_id]
+          ? ` <span class="muted">(now in "${esc(titleOf[p.offer_id])}")</span>` : "";
+        return `<label><input type="checkbox" data-pid="${p.id}" ${offSel.has(p.id) ? "checked" : ""}> <span>${esc(p.name)}${other}</span></label>`;
+      }).join("")
+    : `<p class="muted" style="padding:10px 0">No products found.</p>`;
+  $("oc-count").textContent = offSel.size;
+}
+
+async function openOffer(o) {
+  editingOffer = o ? o.id : null;
+  $("oc-heading").textContent = o ? "Edit offer" : "New offer";
+  $("oc-active").checked = o ? !!o.is_active : true;
+  $("oc-title").value = o ? o.title : "";
+  $("oc-end").value = o ? toLocalInput(o.ends_at) : "";
+  $("oc-search").value = "";
+  $("omodal").classList.remove("hidden");
+  $("oc-list").innerHTML = `<p class="muted" style="padding:10px 0">Loading products...</p>`;
+  const { data } = await db.from("products").select("id,name,offer_id").order("created_at", { ascending: false }).limit(1000);
+  offProducts = data || [];
+  offSel = new Set(offProducts.filter(p => o && p.offer_id === o.id).map(p => p.id));
+  renderOfferPicker();
+}
+$("o-new").onclick = () => openOffer(null);
+$("oc-cancel").onclick = () => $("omodal").classList.add("hidden");
+$("oc-search").oninput = renderOfferPicker;
+$("oc-list").onchange = e => {
+  const cb = e.target.closest("input[data-pid]");
   if (!cb) return;
-  cb.checked ? offSel.add(cb.dataset.oid) : offSel.delete(cb.dataset.oid);
-  $("o-count").textContent = offSel.size;
+  cb.checked ? offSel.add(cb.dataset.pid) : offSel.delete(cb.dataset.pid);
+  $("oc-count").textContent = offSel.size;
 };
 
-$("o-save").onclick = async () => {
-  const active = $("o-active").checked;
-  const title = $("o-title").value.trim() || "Special Offer";
-  const endv = $("o-end").value;
-  if (active && !endv) return toast("Set the end date and time");
-  const ends = endv ? new Date(endv).toISOString() : null;
+$("ol-wrap").onclick = async e => {
+  const b = e.target.closest("button[data-oa]");
+  if (!b) return;
+  const o = offList.find(x => x.id === b.dataset.id);
+  if (!o) return;
+  if (b.dataset.oa === "edit") openOffer(o);
+  if (b.dataset.oa === "del") {
+    if (!confirm('Delete the offer "' + o.title + '"? The products stay, only the offer is removed.')) return;
+    const { error } = await db.from("campaigns").delete().eq("id", o.id);
+    if (error) return toast("Delete failed: " + error.message);
+    toast("Offer deleted", true);
+    loadOfferTab();
+    loadProducts();
+  }
+};
+
+$("oc-save").onclick = async () => {
+  const active = $("oc-active").checked;
+  const title = $("oc-title").value.trim();
+  const endv = $("oc-end").value;
+  if (!title) return toast("Enter the offer title");
+  if (!endv) return toast("Set the end date and time");
+  const ends = new Date(endv).toISOString();
   if (active && new Date(ends) <= new Date()) return toast("The end time must be in the future");
   if (active && !offSel.size) return toast("Select at least one product");
 
-  const btn = $("o-save");
-  btn.disabled = true;
+  const btn = $("oc-save");
+  btn.disabled = true; btn.textContent = "Saving...";
   try {
-    const r1 = await db.from("offers").upsert({ id: 1, title, is_active: active, ends_at: ends, updated_at: new Date().toISOString() });
-    if (r1.error) throw r1.error;
-    const r2 = await db.from("products").update({ in_offer: false }).eq("in_offer", true);
-    if (r2.error) throw r2.error;
+    let cid = editingOffer;
+    if (cid) {
+      const r1 = await db.from("campaigns").update({ title, is_active: active, ends_at: ends }).eq("id", cid);
+      if (r1.error) throw r1.error;
+      const r2 = await db.from("products").update({ offer_id: null }).eq("offer_id", cid);
+      if (r2.error) throw r2.error;
+    } else {
+      const r1 = await db.from("campaigns").insert({ title, is_active: active, ends_at: ends }).select("id").single();
+      if (r1.error) throw r1.error;
+      cid = r1.data.id;
+    }
     const ids = [...offSel];
     for (let i = 0; i < ids.length; i += 100) {
-      const r3 = await db.from("products").update({ in_offer: true }).in("id", ids.slice(i, i + 100));
+      const r3 = await db.from("products").update({ offer_id: cid }).in("id", ids.slice(i, i + 100));
       if (r3.error) throw r3.error;
     }
     toast("Offer saved", true);
+    $("omodal").classList.add("hidden");
     loadOfferTab();
     loadProducts();
   } catch (err) {
     toast("Save failed: " + (err.message || "error"));
   }
-  btn.disabled = false;
+  btn.disabled = false; btn.textContent = "Save offer";
+};
+
+/* ================= BANNER (home page top pictures) ================= */
+let bannersCache = [];
+
+async function loadBanners() {
+  const { data, error } = await db.from("banners").select("*").order("position", { ascending: true });
+  if (error) {
+    $("b-list").innerHTML = `<p class="empty">Could not load banners. Did you run the new SQL? (${esc(error.message)})</p>`;
+    return;
+  }
+  bannersCache = data || [];
+  $("b-list").innerHTML = bannersCache.length ? bannersCache.map((b, i) => `
+    <div class="bitem">
+      <img src="${esc(b.url)}" alt="" loading="lazy">
+      <div>
+        <div class="muted">Picture ${i + 1} of ${bannersCache.length}</div>
+        <div>
+          <button class="mini" data-ba="left" data-i="${i}" ${i === 0 ? "disabled" : ""}>&larr; Earlier</button>
+          <button class="mini" data-ba="right" data-i="${i}" ${i === bannersCache.length - 1 ? "disabled" : ""}>Later &rarr;</button>
+          <button class="mini danger" data-ba="del" data-i="${i}">Remove</button>
+        </div>
+      </div>
+    </div>`).join("")
+    : `<p class="empty">No picture uploaded. The home page shows the old poster.jpg until you add one.</p>`;
+}
+
+$("b-files").onchange = async e => {
+  const files = Array.from(e.target.files);
+  e.target.value = "";
+  if (!files.length) return;
+  $("b-status").textContent = "Uploading " + files.length + " picture(s)...";
+  try {
+    let pos = bannersCache.reduce((m, b) => Math.max(m, b.position), -1) + 1;
+    for (let i = 0; i < files.length; i++) {
+      const blob = await shrinkTo(files[i], 1600, 0.8);
+      const path = "banners/" + Date.now() + "-" + i + ".webp";
+      const up = await db.storage.from("product-images").upload(path, blob, { contentType: "image/webp", cacheControl: "31536000" });
+      if (up.error) throw up.error;
+      const url = db.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+      const ins = await db.from("banners").insert({ url, position: pos++ });
+      if (ins.error) throw ins.error;
+    }
+    toast("Picture(s) added", true);
+  } catch (err) {
+    toast("Upload failed: " + (err.message || "error"));
+  }
+  $("b-status").textContent = "";
+  loadBanners();
+};
+
+$("b-list").onclick = async e => {
+  const b = e.target.closest("button[data-ba]");
+  if (!b || b.disabled) return;
+  const i = Number(b.dataset.i);
+  if (b.dataset.ba === "del") {
+    if (!confirm("Remove this picture?")) return;
+    const row = bannersCache[i];
+    const { error } = await db.from("banners").delete().eq("id", row.id);
+    if (error) return toast("Remove failed: " + error.message);
+    await removeFiles([row.url]);
+    toast("Removed", true);
+    return loadBanners();
+  }
+  const j = b.dataset.ba === "left" ? i - 1 : i + 1;
+  if (j < 0 || j >= bannersCache.length) return;
+  const arr = bannersCache.slice();
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  await Promise.all(arr.map((r, idx) => db.from("banners").update({ position: idx }).eq("id", r.id)));
+  loadBanners();
 };
 
 init();

@@ -58,6 +58,14 @@
     .tbl .r{text-align:right}
     .tbl tr[data-m]{cursor:pointer}
     .tbl tr[data-m]:hover{background:rgba(255,255,255,.05)}
+    .ocard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
+    .st{font-size:.72rem;font-weight:800;padding:3px 10px;border-radius:99px}
+    .st-live{background:#1f9d55;color:#fff}
+    .st-end{background:#5a1620;color:#fff}
+    .st-off{background:#3a3a44;color:#ddd}
+    .bitem{display:grid;grid-template-columns:140px 1fr;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px}
+    .bitem img{width:140px;height:79px;object-fit:cover;border-radius:8px;background:#222}
+    .mini:disabled{opacity:.35;cursor:not-allowed}
     .pick{max-height:360px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 12px;margin-top:8px}
     .pick label{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);color:var(--text);font-size:.92rem}
   </style>
@@ -77,7 +85,8 @@
         <button class="tab active" data-tab="products">Products</button>
         <button class="tab" data-tab="orders">Orders <span class="cart-count hidden" id="order-badge">0</span></button>
         <button class="tab" data-tab="sales">Sales</button>
-        <button class="tab" data-tab="offer">Offer</button>
+        <button class="tab" data-tab="offer">Offers</button>
+        <button class="tab" data-tab="banner">Banner</button>
         <button class="tab" id="logout">Logout</button>
       </div>
     </header>
@@ -123,17 +132,21 @@
       </section>
 
       <section id="tab-offer" class="hidden">
-        <div id="o-status" class="muted" style="margin-bottom:10px"></div>
-        <label class="check"><input type="checkbox" id="o-active"> Offer is ON (show on the home page)</label>
-        <div class="field"><label>Offer title</label><input id="o-title" placeholder="e.g. Weekend Jersey Sale"></div>
-        <div class="field"><label>Offer ends on (date and time)</label><input id="o-end" type="datetime-local"></div>
-        <div class="field">
-          <label>Products in this offer: <b id="o-count">0</b> selected</label>
-          <input id="o-search" placeholder="Search to find a product">
-          <div id="o-list" class="pick"></div>
+        <div class="toolbar">
+          <button class="btn btn-primary" id="o-new">+ New offer</button>
         </div>
-        <button class="btn btn-primary" id="o-save" style="width:100%;margin-top:16px">Save offer</button>
-        <div class="hint">The offer only features the products and runs the countdown. Set the offer price and the original price on each product (or with the bulk price tool).</div>
+        <div id="ol-wrap"></div>
+        <div class="hint">An offer shows its products with a countdown on the home page. Set the offer price and the original price on each product (or with the bulk price tool). When the time ends, the offer disappears by itself, but the prices stay until you change them back.</div>
+      </section>
+
+      <section id="tab-banner" class="hidden">
+        <div class="field" style="margin-top:0">
+          <label>Add picture(s) for the top of the home page</label>
+          <input type="file" id="b-files" accept="image/*" multiple>
+          <div id="b-status" class="hint"></div>
+        </div>
+        <div class="hint" style="margin-bottom:12px">One picture stays fixed. Two or more play as a slideshow (every 5 seconds). Best size: 1600 x 900 (wide, 16:9). Keep text in the middle.</div>
+        <div id="b-list"></div>
       </section>
     </main>
   </div>
@@ -187,6 +200,24 @@
       <div class="actions">
         <button class="btn btn-ghost" id="m-cancel">Cancel</button>
         <button class="btn btn-primary" id="m-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="omodal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="oc-heading">New offer</h3>
+      <label class="check"><input type="checkbox" id="oc-active" checked> Offer is ON (show on the home page)</label>
+      <div class="field"><label>Offer title</label><input id="oc-title" placeholder="e.g. Weekend Jersey Sale"></div>
+      <div class="field"><label>Offer ends on (date and time)</label><input id="oc-end" type="datetime-local"></div>
+      <div class="field">
+        <label>Products in this offer: <b id="oc-count">0</b> selected</label>
+        <input id="oc-search" placeholder="Search to find a product">
+        <div id="oc-list" class="pick"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" id="oc-cancel">Cancel</button>
+        <button class="btn btn-primary" id="oc-save">Save offer</button>
       </div>
     </div>
   </div>
