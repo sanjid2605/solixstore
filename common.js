@@ -41,7 +41,7 @@ function renderChrome() {
         <img src="logo.png" alt="SOLIX"
           onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'SOLIX'}))">
       </a>
-      ${isShop ? `<div class="head-search"><input id="search" type="search" placeholder="জার্সি খুঁজুন..." autocomplete="off" enterkeyhint="search"></div>` : ""}
+      ${isShop ? `<div class="head-search"><input id="search" type="search"  autocomplete="off" enterkeyhint="search"></div>` : ""}
       <a class="cart-link" href="cart.html">Cart <span class="cart-count" id="cart-count">0</span></a>
     </header>`;
 
