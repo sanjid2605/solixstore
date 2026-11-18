@@ -9,18 +9,20 @@
   <link rel="apple-touch-icon" href="favicon.png">
   <link rel="stylesheet" href="style.css">
   <style>
-    input,select{width:100%;padding:11px;background:#1d1d22;color:var(--text);border:1px solid var(--line);border-radius:8px;font:inherit}
+    input,select{width:100%;padding:11px;background:#1d1d29;color:var(--text);border:1px solid var(--line);border-radius:8px;font:inherit;color-scheme:dark}
     input[type=checkbox]{width:auto}
     .tab{background:transparent;color:var(--text);padding:8px 10px;border-radius:8px;border:1px solid transparent}
     .tab.active{background:var(--panel);border-color:var(--line)}
+    .tabs-wrap{display:flex;flex-wrap:wrap;gap:2px;justify-content:flex-end}
     .toolbar{display:flex;gap:10px;margin-bottom:14px}
     .toolbar .btn{flex:0 0 auto;padding:10px 16px}
-    .row{display:grid;grid-template-columns:56px 1fr;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px}
+    .row{display:grid;grid-template-columns:28px 56px 1fr;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px}
     .row img,.row .noimg{width:56px;height:56px;object-fit:cover;border-radius:8px;background:#222}
     .row .btns{grid-column:1/-1}
     .mini{padding:7px 10px;border-radius:8px;background:#26262c;color:var(--text);font-size:.8rem;margin:2px}
     .mini.danger{background:#5a1620}
     .mini.on{background:var(--red);color:#fff}
+    .chip{display:inline-block;margin:4px 4px 0 0;padding:2px 9px;border-radius:99px;background:rgba(245,197,66,.18);border:1px solid rgba(245,197,66,.5);font-size:.72rem;color:#ffd24d}
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:40;overflow:auto;padding:12px}
     .modal-box{max-width:560px;margin:16px auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
     .field{margin-top:12px}
@@ -32,8 +34,32 @@
     .img-item .mini{width:100%;margin:2px 0 0;font-size:.7rem}
     .order{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px}
     .order.new{border-color:var(--accent)}
+    .order.cancelled{opacity:.55}
     .muted{color:var(--muted);font-size:.85rem}
     .total-line{margin-top:10px;font-weight:700}
+    .hint{margin-top:6px;font-size:.8rem;color:var(--muted)}
+    .check{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:.9rem}
+    .tagbox{display:flex;flex-wrap:wrap;gap:14px;margin-top:6px}
+    .tagbox label{display:flex;gap:6px;align-items:center;color:var(--text);font-size:.9rem;margin:0}
+
+    details.bulk{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:14px}
+    details.bulk summary{cursor:pointer;font-weight:700}
+    .bulk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+    .bulk-grid .full{grid-column:1/-1}
+
+    .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0}
+    @media(min-width:700px){.cards{grid-template-columns:repeat(5,1fr)}}
+    .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+    .stat b{display:block;font-size:1.25rem;margin-top:2px}
+    .sec{margin:22px 0 8px;font-size:1.05rem}
+    .tbl{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .tbl th,.tbl td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;font-size:.92rem}
+    .tbl th{color:var(--muted);font-weight:600;font-size:.8rem}
+    .tbl .r{text-align:right}
+    .tbl tr[data-m]{cursor:pointer}
+    .tbl tr[data-m]:hover{background:rgba(255,255,255,.05)}
+    .pick{max-height:360px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 12px;margin-top:8px}
+    .pick label{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);color:var(--text);font-size:.92rem}
   </style>
 </head>
 <body>
@@ -46,10 +72,12 @@
 
   <div id="app" class="hidden">
     <header class="site-header">
-      <strong style="letter-spacing:3px">SOLIX ADMIN</strong>
-      <div>
+      <strong style="letter-spacing:3px">ADMIN</strong>
+      <div class="tabs-wrap">
         <button class="tab active" data-tab="products">Products</button>
         <button class="tab" data-tab="orders">Orders <span class="cart-count hidden" id="order-badge">0</span></button>
+        <button class="tab" data-tab="sales">Sales</button>
+        <button class="tab" data-tab="offer">Offer</button>
         <button class="tab" id="logout">Logout</button>
       </div>
     </header>
@@ -60,12 +88,52 @@
           <input id="search" placeholder="Search product name">
           <button class="btn btn-primary" id="add-product">+ Add</button>
         </div>
+
+        <details class="bulk">
+          <summary>Set the same price for many products</summary>
+          <div class="bulk-grid">
+            <input id="bulk-price" type="number" min="0" placeholder="New price">
+            <input id="bulk-old" type="number" min="0" placeholder="Original price (optional)">
+            <label class="check full"><input type="checkbox" id="bulk-clear"> Remove the original (struck) price</label>
+            <button class="mini" id="bulk-sel">Apply to selected</button>
+            <button class="mini danger" id="bulk-all">Apply to ALL products</button>
+          </div>
+          <label class="check"><input type="checkbox" id="sel-all"> Select all products shown below</label>
+          <div class="hint">Tick the boxes on the left of the products first, then press "Apply to selected".</div>
+        </details>
+
         <div id="plist"></div>
         <div class="pager"><button id="more" class="hidden">Load more</button></div>
       </section>
 
       <section id="tab-orders" class="hidden">
         <div id="olist"></div>
+      </section>
+
+      <section id="tab-sales" class="hidden">
+        <div class="toolbar">
+          <input id="s-month" type="month">
+        </div>
+        <div id="s-cards" class="cards"></div>
+        <h3 class="sec">Day by day</h3>
+        <div id="s-daily"></div>
+        <h3 class="sec">All months</h3>
+        <div id="s-monthly"></div>
+        <div class="hint">Cancelled orders are not counted. Dates use Bangladesh time.</div>
+      </section>
+
+      <section id="tab-offer" class="hidden">
+        <div id="o-status" class="muted" style="margin-bottom:10px"></div>
+        <label class="check"><input type="checkbox" id="o-active"> Offer is ON (show on the home page)</label>
+        <div class="field"><label>Offer title</label><input id="o-title" placeholder="e.g. Weekend Jersey Sale"></div>
+        <div class="field"><label>Offer ends on (date and time)</label><input id="o-end" type="datetime-local"></div>
+        <div class="field">
+          <label>Products in this offer: <b id="o-count">0</b> selected</label>
+          <input id="o-search" placeholder="Search to find a product">
+          <div id="o-list" class="pick"></div>
+        </div>
+        <button class="btn btn-primary" id="o-save" style="width:100%;margin-top:16px">Save offer</button>
+        <div class="hint">The offer only features the products and runs the countdown. Set the offer price and the original price on each product (or with the bulk price tool).</div>
       </section>
     </main>
   </div>
@@ -96,7 +164,19 @@
 
       <div class="total-line">Total stock: <span id="f-total">0</span></div>
 
-      <div class="field"><label><input type="checkbox" id="f-out"> Declare whole product Stock Out</label></div>
+      <div class="field">
+        <label><input type="checkbox" id="f-out"> Declare whole product Stock Out</label>
+        <div class="hint">Sizes and their stock stay saved. Un-tick this to sell the product again.</div>
+      </div>
+
+      <div class="field">
+        <label>Show this product in</label>
+        <div class="tagbox">
+          <label><input type="checkbox" id="f-tag-featured"> Featured</label>
+          <label><input type="checkbox" id="f-tag-new"> New arrival</label>
+          <label><input type="checkbox" id="f-tag-top"> Top selling</label>
+        </div>
+      </div>
 
       <div class="field">
         <label>Images (first image is the main one)</label>
@@ -107,6 +187,29 @@
       <div class="actions">
         <button class="btn btn-ghost" id="m-cancel">Cancel</button>
         <button class="btn btn-primary" id="m-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="rmodal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="r-title">Restock</h3>
+      <div class="field" id="r-sizes-box">
+        <label>Stock for each size</label>
+        <div class="size-grid">
+          <span>S</span><span>M</span><span>L</span><span>XL</span><span>XXL</span>
+          <input type="number" min="0" id="rs-S" value="0">
+          <input type="number" min="0" id="rs-M" value="0">
+          <input type="number" min="0" id="rs-L" value="0">
+          <input type="number" min="0" id="rs-XL" value="0">
+          <input type="number" min="0" id="rs-XXL" value="0">
+        </div>
+      </div>
+      <div class="field hidden" id="r-nosize-box"><label>Stock</label><input type="number" min="0" id="r-stock" value="0"></div>
+      <div class="total-line">Total stock: <span id="r-total">0</span></div>
+      <div class="actions">
+        <button class="btn btn-ghost" id="r-cancel">Cancel</button>
+        <button class="btn btn-primary" id="r-save">Save and sell again</button>
       </div>
     </div>
   </div>

@@ -1,0 +1,28 @@
+/* tabs */
+.tabs{display:flex;gap:8px;overflow-x:auto;margin:0 0 16px;padding-bottom:4px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab-btn{flex:0 0 auto;padding:10px 18px;border-radius:99px;background:#1d1d29;color:#fff;border:1px solid rgba(255,255,255,.22);font-weight:600;transition:background .2s,color .2s,box-shadow .2s}
+.tab-btn.active{background:linear-gradient(135deg,#ffd86b,#f5a623);color:#111;border-color:transparent;box-shadow:0 4px 18px rgba(245,166,35,.35)}
+
+/* tag badge on cards */
+.tag-badge{position:absolute;top:8px;right:8px;z-index:2;background:#f5c542;color:#111;font-size:.68rem;font-weight:800;letter-spacing:.5px;padding:4px 9px;border-radius:99px;box-shadow:0 2px 10px rgba(0,0,0,.45)}
+.tag-offer{background:linear-gradient(135deg,#ff7a45,#ff3d6e);color:#fff}
+
+/* offer section */
+.offer{margin:0 0 22px;padding:18px;border-radius:22px;background:linear-gradient(135deg,rgba(255,110,64,.2),rgba(245,197,66,.14));border:1px solid rgba(255,170,64,.7);box-shadow:0 0 44px rgba(255,140,60,.28)}
+.offer-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
+.offer-title{font-size:1.35rem;font-weight:800;line-height:1.25}
+.offer-title small{display:block;color:#ffd24d;font-size:.78rem;letter-spacing:1px;margin-bottom:2px}
+.cd{display:flex;gap:8px}
+.cd div{min-width:58px;text-align:center;padding:8px 6px;border-radius:12px;background:#0d0d14;border:1px solid rgba(255,255,255,.22)}
+.cd b{display:block;font-size:1.4rem;font-variant-numeric:tabular-nums;color:#fff}
+.cd span{font-size:.68rem;color:#c4c4d0}
+.offer-row{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(165px,210px);gap:12px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x proximity}
+.offer-row .card{scroll-snap-align:start}
+@media(max-width:640px){
+  .offer{padding:14px;border-radius:18px}
+  .offer-title{font-size:1.1rem}
+  .cd div{min-width:50px;padding:6px 4px}
+  .cd b{font-size:1.15rem}
+  .offer-row{grid-auto-columns:minmax(150px,170px)}
+}
