@@ -145,10 +145,25 @@
           <input type="file" id="b-files" accept="image/*" multiple>
           <div id="b-status" class="hint"></div>
         </div>
+        <div class="field">
+          <label>Banner width: <b id="b-width-val">860 px</b></label>
+          <input type="range" id="b-width" min="300" max="1200" step="20" value="860">
+        </div>
+        <div class="field">
+          <label>Banner shape</label>
+          <select id="b-ratio">
+            <option value="21/9">Very wide (21:9)</option>
+            <option value="16/9" selected>Wide (16:9)</option>
+            <option value="4/3">Photo (4:3)</option>
+            <option value="1/1">Square (1:1)</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="b-size-save" style="width:100%;margin:12px 0 16px">Save banner size</button>
         <div class="hint" style="margin-bottom:12px">One picture stays fixed. Two or more play as a slideshow (every 5 seconds). Best size: 1600 x 900 (wide, 16:9). Keep text in the middle.</div>
         <div id="b-list"></div>
       </section>
     </main>
+    <div class="hint" style="text-align:center;margin:26px 0 40px">Admin v4</div>
   </div>
 
   <div id="modal" class="modal hidden">
@@ -183,9 +198,9 @@
       </div>
 
       <div class="field">
-        <label>Show this product in</label>
+        <label>Home page sections</label>
         <div class="tagbox">
-          <label><input type="checkbox" id="f-tag-featured"> Featured</label>
+          <label><input type="checkbox" id="f-tag-featured"> Featured (slides at the top)</label>
           <label><input type="checkbox" id="f-tag-new"> New arrival</label>
           <label><input type="checkbox" id="f-tag-top"> Top selling</label>
         </div>
@@ -247,6 +262,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
-  <script src="admin.js"></script>
+  <script src="admin.js?v=4"></script>
 </body>
 </html>

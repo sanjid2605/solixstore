@@ -98,7 +98,7 @@ async function loadProducts() {
     const sizeText = p.has_sizes
       ? SIZES.map(s => s + ":" + (((p.product_sizes || []).find(x => x.size === s) || {}).stock || 0)).join("  ")
       : "No sizes";
-    const chips = [...(p.tags || []).map(t => TAGS[t]).filter(Boolean), p.in_offer ? "In offer" : null]
+    const chips = [...(p.tags || []).map(t => TAGS[t]).filter(Boolean), p.offer_id ? "In offer" : null]
       .filter(Boolean).map(t => `<span class="chip">${esc(t)}</span>`).join("");
     return `
       <div class="row">
@@ -659,7 +659,25 @@ $("oc-save").onclick = async () => {
 /* ================= BANNER (home page top pictures) ================= */
 let bannersCache = [];
 
+async function loadBannerSettings() {
+  const { data } = await db.from("settings").select("*").in("key", ["banner_width", "banner_ratio"]);
+  (data || []).forEach(r => {
+    if (r.key === "banner_width") $("b-width").value = r.value;
+    if (r.key === "banner_ratio") $("b-ratio").value = r.value;
+  });
+  $("b-width-val").textContent = $("b-width").value + " px";
+}
+$("b-width").oninput = () => { $("b-width-val").textContent = $("b-width").value + " px"; };
+$("b-size-save").onclick = async () => {
+  const { error } = await db.from("settings").upsert([
+    { key: "banner_width", value: String($("b-width").value) },
+    { key: "banner_ratio", value: $("b-ratio").value }
+  ]);
+  error ? toast("Save failed: " + error.message) : toast("Banner size saved", true);
+};
+
 async function loadBanners() {
+  loadBannerSettings();
   const { data, error } = await db.from("banners").select("*").order("position", { ascending: true });
   if (error) {
     $("b-list").innerHTML = `<p class="empty">Could not load banners. Did you run the new SQL? (${esc(error.message)})</p>`;

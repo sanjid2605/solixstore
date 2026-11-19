@@ -1,10 +1,10 @@
 let page = 1;
 let totalPages = 1;
 let q = "";
-let tab = "all";
 let reqId = 0;
 let offerLive = false;
 let heroReady = false;
+let sectionsReady = false;
 let cdTimer = null;
 let heroTimer = null;
 
@@ -12,6 +12,8 @@ const grid = document.getElementById("grid");
 const pager = document.getElementById("pager");
 const heroBox = document.getElementById("hero");
 const offersBox = document.getElementById("offers");
+const sectionsBox = document.getElementById("sections");
+const allTitle = document.getElementById("all-title");
 
 /* add ?debug to the address to see what the page loaded: solixbd.me/?debug */
 const DEBUG = location.search.indexOf("debug") !== -1;
@@ -35,11 +37,11 @@ function tagText(p) {
   return "";
 }
 
-function cardHtml(p, forceOffer) {
+function cardHtml(p, forceOffer, hideTag) {
   const out = p.is_stock_out || Number(p.total_stock) <= 0;
   const old = p.original_price && Number(p.original_price) > Number(p.price)
     ? `<span class="old">${money(p.original_price)}</span>` : "";
-  const tg = forceOffer ? "OFFER" : tagText(p);
+  const tg = forceOffer ? "OFFER" : (hideTag ? "" : tagText(p));
   return `
     <a class="card ${out ? "is-out" : ""}" href="product.html?id=${p.id}">
       <div class="img-wrap">
@@ -55,12 +57,32 @@ function cardHtml(p, forceOffer) {
 }
 
 function updateTop() {
-  const show = q === "" && tab === "all";
+  const show = q === "";
   heroBox.classList.toggle("hidden", !(show && heroReady));
   offersBox.classList.toggle("hidden", !(show && offerLive));
+  sectionsBox.classList.toggle("hidden", !(show && sectionsReady));
+  allTitle.textContent = show ? "All Products" : "Search Results";
 }
 
-/* ---------- products ---------- */
+/* a row of cards that slides by itself (pauses while you touch it) */
+function autoSlide(el, ms) {
+  let paused = false, hold = 0;
+  const touch = () => { paused = true; clearTimeout(hold); hold = setTimeout(() => { paused = false; }, 6000); };
+  el.addEventListener("touchstart", touch, { passive: true });
+  el.addEventListener("wheel", touch, { passive: true });
+  el.addEventListener("mouseenter", () => { paused = true; });
+  el.addEventListener("mouseleave", () => { paused = false; });
+  setInterval(() => {
+    if (paused || document.hidden || !el.isConnected) return;
+    if (el.scrollWidth <= el.clientWidth + 8) return;
+    const card = el.querySelector(".card");
+    const step = card ? card.getBoundingClientRect().width + 12 : 200;
+    if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 4) el.scrollTo({ left: 0, behavior: "smooth" });
+    else el.scrollBy({ left: step, behavior: "smooth" });
+  }, ms);
+}
+
+/* ---------- all products ---------- */
 async function loadProducts() {
   const my = ++reqId;
   const from = (page - 1) * C.PAGE_SIZE;
@@ -72,7 +94,6 @@ async function loadProducts() {
     .order("created_at", { ascending: false })
     .range(from, to);
   if (q) query = query.ilike("name", "%" + q + "%");
-  if (tab !== "all") query = query.contains("tags", [tab]);
 
   const { data, count, error } = await query;
   if (my !== reqId) return;
@@ -84,13 +105,13 @@ async function loadProducts() {
     return;
   }
   if (!data.length) {
-    grid.innerHTML = `<p class="empty">${q || tab !== "all" ? "কোনো প্রোডাক্ট পাওয়া যায়নি।" : "No products yet."}</p>`;
+    grid.innerHTML = `<p class="empty">${q ? "No products found." : "No products yet."}</p>`;
     pager.innerHTML = "";
     return;
   }
 
   totalPages = Math.max(1, Math.ceil(count / C.PAGE_SIZE));
-  grid.innerHTML = data.map(p => cardHtml(p, false)).join("");
+  grid.innerHTML = data.map(p => cardHtml(p, false, false)).join("");
 
   pager.innerHTML = totalPages > 1 ? `
     <button id="prev" ${page <= 1 ? "disabled" : ""}>← Prev</button>
@@ -102,11 +123,45 @@ async function loadProducts() {
   if (next) next.onclick = () => { page++; loadProducts(); window.scrollTo(0, 0); };
 }
 
+/* ---------- Featured / Top Selling / New Arrivals ---------- */
+function sectionHtml(title, key, items) {
+  return `
+    <section class="hsec" data-key="${key}">
+      <h2 class="sec-title">${title}</h2>
+      <div class="sec-row">${items.map(p => cardHtml(p, false, true)).join("")}</div>
+    </section>`;
+}
+
+async function loadSections() {
+  try {
+    const get = tag => db.from("product_list").select("*").contains("tags", [tag])
+      .order("created_at", { ascending: false }).limit(20);
+    const [f, t, n] = await Promise.all([get("featured"), get("top"), get("new")]);
+    [f, t, n].forEach(r => { if (r.error) dbg("sections error: " + r.error.message); });
+    const fi = f.data || [], ti = t.data || [], ni = n.data || [];
+    dbg("featured " + fi.length + ", top " + ti.length + ", new " + ni.length);
+
+    const html = [
+      fi.length ? sectionHtml("Featured", "featured", fi) : "",
+      ti.length ? sectionHtml("Top Selling", "top", ti) : "",
+      ni.length ? sectionHtml("New Arrivals", "new", ni) : ""
+    ].join("");
+    if (!html) return;
+
+    sectionsBox.innerHTML = html;
+    sectionsReady = true;
+    updateTop();
+    const row = sectionsBox.querySelector('[data-key="featured"] .sec-row');
+    if (row) autoSlide(row, 3000);
+  } catch (e) { dbg("sections crash: " + e.message); }
+}
+
 /* ---------- top picture(s) ---------- */
-function renderHero(urls) {
+function renderHero(urls, width, ratio) {
+  heroBox.style.maxWidth = width + "px";
   heroBox.innerHTML = `
-    <div class="hero-track">${urls.map((u, i) =>
-      `<a class="slide${i === 0 ? " on" : ""}" href="#grid"><img src="${esc(u)}" alt="" ${i ? 'loading="lazy"' : ""}></a>`).join("")}</div>
+    <div class="hero-track" style="aspect-ratio:${ratio}">${urls.map((u, i) =>
+      `<a class="slide${i === 0 ? " on" : ""}" href="#all-title"><img src="${esc(u)}" alt="" ${i ? 'loading="lazy"' : ""}></a>`).join("")}</div>
     ${urls.length > 1 ? `<div class="hero-dots">${urls.map((_, i) =>
       `<button type="button" data-i="${i}" class="${i === 0 ? "on" : ""}" aria-label="Picture ${i + 1}"></button>`).join("")}</div>` : ""}`;
 
@@ -141,15 +196,22 @@ function renderHero(urls) {
 }
 
 async function loadHero() {
-  let urls = [];
+  let urls = [], width = 860, ratio = "16/9";
   try {
-    const { data, error } = await db.from("banners").select("url").order("position", { ascending: true });
-    if (error) dbg("banners error: " + error.message);
-    urls = (data || []).map(r => r.url);
-    dbg("banners found: " + urls.length);
+    const [b, s] = await Promise.all([
+      db.from("banners").select("url").order("position", { ascending: true }),
+      db.from("settings").select("*").in("key", ["banner_width", "banner_ratio"])
+    ]);
+    if (b.error) dbg("banners error: " + b.error.message);
+    urls = (b.data || []).map(r => r.url);
+    (s.data || []).forEach(r => {
+      if (r.key === "banner_width" && Number(r.value) >= 200) width = Math.min(1200, Number(r.value));
+      if (r.key === "banner_ratio" && /^\d+\/\d+$/.test(r.value)) ratio = r.value;
+    });
+    dbg("banners: " + urls.length + ", width " + width + ", ratio " + ratio);
   } catch (e) { dbg("banners crash: " + e.message); }
   if (!urls.length) urls = ["poster.jpg"];
-  renderHero(urls);
+  renderHero(urls, width, ratio);
 }
 
 /* ---------- offers (many) ---------- */
@@ -159,15 +221,15 @@ function offerHtml(c, items) {
   return `
     <section class="offer" data-end="${new Date(c.ends_at).getTime()}">
       <div class="offer-head">
-        <div class="offer-title"><small>🔥 চলমান অফার</small>${esc(c.title)}</div>
+        <div class="offer-title"><small>🔥 LIMITED OFFER</small>${esc(c.title)}</div>
         <div class="cd">
-          <div><b class="cd-d">00</b><span>দিন</span></div>
-          <div><b class="cd-h">00</b><span>ঘণ্টা</span></div>
-          <div><b class="cd-m">00</b><span>মিনিট</span></div>
-          <div><b class="cd-s">00</b><span>সেকেন্ড</span></div>
+          <div><b class="cd-d">00</b><span>Days</span></div>
+          <div><b class="cd-h">00</b><span>Hours</span></div>
+          <div><b class="cd-m">00</b><span>Min</span></div>
+          <div><b class="cd-s">00</b><span>Sec</span></div>
         </div>
       </div>
-      <div class="offer-row">${items.map(p => cardHtml(p, true)).join("")}</div>
+      <div class="offer-row">${items.map(p => cardHtml(p, true, true)).join("")}</div>
     </section>`;
 }
 
@@ -216,20 +278,9 @@ async function loadOffers() {
     tickOffers();
     clearInterval(cdTimer);
     cdTimer = setInterval(tickOffers, 1000);
+    offersBox.querySelectorAll(".offer-row").forEach(r => autoSlide(r, 3000));
   } catch (e) { dbg("offers crash: " + e.message); }
 }
-
-/* ---------- tabs ---------- */
-document.getElementById("tabs").addEventListener("click", e => {
-  const b = e.target.closest(".tab-btn");
-  if (!b) return;
-  document.querySelectorAll(".tab-btn").forEach(x => x.classList.remove("active"));
-  b.classList.add("active");
-  tab = b.dataset.tab;
-  page = 1;
-  updateTop();
-  loadProducts();
-});
 
 /* ---------- search ---------- */
 let timer;
@@ -244,5 +295,6 @@ document.getElementById("search").addEventListener("input", e => {
 });
 
 loadProducts();
-loadHero();
 loadOffers();
+loadHero();
+loadSections();

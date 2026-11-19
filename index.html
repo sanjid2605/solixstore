@@ -13,19 +13,15 @@
   <link rel="icon" type="image/png" sizes="64x64" href="favicon.png">
   <link rel="apple-touch-icon" href="favicon.png">
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="extra.css?v=3">
+  <link rel="stylesheet" href="extra.css?v=4">
 </head>
 <body>
   <div id="header"></div>
   <main class="container">
-    <div id="hero" class="hero hidden"></div>
     <div id="offers" class="hidden"></div>
-    <div class="tabs" id="tabs">
-      <button type="button" class="tab-btn active" data-tab="all">সব</button>
-      <button type="button" class="tab-btn" data-tab="featured">ফিচার্ড</button>
-      <button type="button" class="tab-btn" data-tab="new">নতুন</button>
-      <button type="button" class="tab-btn" data-tab="top">টপ সেলিং</button>
-    </div>
+    <div id="hero" class="hero hidden"></div>
+    <div id="sections" class="hidden"></div>
+    <h2 class="sec-title" id="all-title">All Products</h2>
     <div id="grid" class="grid"></div>
     <div id="pager" class="pager"></div>
   </main>
@@ -34,6 +30,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
   <script src="common.js"></script>
-  <script src="shop.js?v=3"></script>
+  <script src="shop.js?v=4"></script>
 </body>
 </html>
