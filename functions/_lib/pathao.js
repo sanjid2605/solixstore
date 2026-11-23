@@ -64,3 +64,37 @@ export async function getPricing(env, city, zone, weight) {
 export async function getCharge(env, city, zone, weight) {
   return (await getPricing(env, city, zone, weight)).charge;
 }
+
+/* ---------- Supabase helper (server side, secret key) ---------- */
+export async function sb(env, path, opts = {}) {
+  const key = String(env.SUPABASE_SERVICE_KEY);
+  const r = await fetch(env.SUPABASE_URL.replace(/\/$/, "") + path, {
+    ...opts,
+    headers: {
+      apikey: key,
+      ...(key.startsWith("eyJ") ? { Authorization: "Bearer " + key } : {}),
+      "Content-Type": "application/json",
+      ...(opts.headers || {})
+    }
+  });
+  const text = await r.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
+  return { ok: r.ok, data };
+}
+
+/* total weight of a cart in kg, from the weights saved on the products.
+   Rounded up to 0.1 kg, at least 0.5 kg, at most 10 kg (Pathao's limits). */
+export async function cartWeightKg(env, items) {
+  const DEFAULT_G = 250;
+  const ids = [...new Set(items.map(i => i.id))];
+  const w = {};
+  if (ids.length) {
+    const r = await sb(env, `/rest/v1/products?id=in.(${ids.join(",")})&select=id,weight_grams`);
+    if (r.ok && Array.isArray(r.data)) r.data.forEach(p => { w[p.id] = Number(p.weight_grams) || DEFAULT_G; });
+  }
+  let grams = 0;
+  for (const i of items) grams += (w[i.id] || DEFAULT_G) * i.qty;
+  const kg = Math.ceil((grams / 1000) * 10) / 10;
+  return Math.min(10, Math.max(0.5, kg));
+}
