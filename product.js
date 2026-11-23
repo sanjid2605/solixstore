@@ -1,5 +1,6 @@
 const pid = new URLSearchParams(location.search).get("id");
 const root = document.getElementById("product");
+const similarBox = document.getElementById("similar");
 const SIZES = ["S", "M", "L", "XL", "XXL"];
 const SIZE_NAMES = { S: "Small", M: "Medium", L: "Large", XL: "X-Large", XXL: "2X-Large" };
 
@@ -32,6 +33,7 @@ async function load() {
   document.title = P.name + " | SOLIX";
   render();
   track("view_item", { value: P.price, items: [{ id: P.id, name: P.name, price: Number(P.price), qty: 1 }] });
+  loadSimilar();
 }
 
 function render() {
@@ -90,6 +92,47 @@ function render() {
 
   document.getElementById("add").onclick = () => { if (addToCart()) showToast("Added to cart", true); };
   document.getElementById("buy").onclick = buyNow;
+}
+
+/* ---------- similar products ---------- */
+function simCard(p) {
+  const out = p.is_stock_out || Number(p.total_stock) <= 0;
+  const old = p.original_price && Number(p.original_price) > Number(p.price)
+    ? `<span class="old">${money(p.original_price)}</span>` : "";
+  return `
+    <a class="card ${out ? "is-out" : ""}" href="product.html?id=${p.id}">
+      <div class="img-wrap">${p.image_url ? `<img src="${esc(p.image_url)}" alt="${esc(p.name)}" loading="lazy" decoding="async">` : ""}</div>
+      ${out ? `<span class="badge-out">Stock Out</span>` : ""}
+      <div class="card-body">
+        <div class="card-name">${esc(p.name)}</div>
+        <div class="card-price">${money(p.price)}${old}</div>
+      </div>
+    </a>`;
+}
+
+async function loadSimilar() {
+  try {
+    const word = (P.name || "").split(/\s+/).find(w => w.length > 2) || "";
+    let items = [];
+    if (word) {
+      const r = await db.from("product_list").select("*")
+        .ilike("name", "%" + word.replace(/[%_\\]/g, "") + "%").neq("id", P.id)
+        .order("created_at", { ascending: false }).limit(10);
+      items = r.data || [];
+    }
+    if (items.length < 8) {
+      const have = new Set(items.map(x => x.id));
+      have.add(P.id);
+      const r2 = await db.from("product_list").select("*").neq("id", P.id)
+        .order("created_at", { ascending: false }).limit(16);
+      (r2.data || []).forEach(x => {
+        if (items.length < 10 && !have.has(x.id)) { items.push(x); have.add(x.id); }
+      });
+    }
+    if (!items.length) return;
+    similarBox.innerHTML = `<h2 class="sec-title">Similar Products</h2><div class="sec-row">${items.map(simCard).join("")}</div>`;
+    similarBox.classList.remove("hidden");
+  } catch (e) {}
 }
 
 function sizeOk() {

@@ -79,7 +79,7 @@ const totalOf = p => p.has_sizes ? (p.product_sizes || []).reduce((n, s) => n + 
 
 async function loadProducts() {
   let q = db.from("products")
-    .select("*, product_sizes(size,stock), product_images(id,url,position)")
+    .select("*, product_sizes(size,stock), product_images(id,url,thumb_url,position)")
     .order("created_at", { ascending: false }).limit(limit);
   if (search) q = q.ilike("name", "%" + search + "%");
   const { data, error } = await q;
@@ -145,7 +145,7 @@ $("plist").onclick = async e => {
 
   if (b.dataset.a === "del") {
     if (!confirm("Delete this product permanently?")) return;
-    await removeFiles((p.product_images || []).map(i => i.url));
+    await removeFiles((p.product_images || []).flatMap(i => [i.url, i.thumb_url]).filter(Boolean));
     const { error } = await db.from("products").delete().eq("id", p.id);
     if (error) toast("Delete failed");
     else { sel.delete(p.id); toast("Deleted", true); loadProducts(); }
@@ -220,6 +220,7 @@ function openForm(p) {
   $("f-name").value = p ? p.name : "";
   $("f-price").value = p ? p.price : "";
   $("f-old").value = p && p.original_price ? p.original_price : "";
+  $("f-weight").value = p && p.weight_grams ? p.weight_grams : 250;
   $("f-has").checked = p ? p.has_sizes : true;
   $("f-stock").value = p ? p.stock : 0;
   $("f-out").checked = p ? p.is_stock_out : false;
@@ -231,7 +232,7 @@ function openForm(p) {
     const r = p ? (p.product_sizes || []).find(x => x.size === s) : null;
     $("st-" + s).value = r ? r.stock : 0;
   });
-  imgs = p ? (p.product_images || []).sort((a, b) => a.position - b.position).map(i => ({ id: i.id, url: i.url })) : [];
+  imgs = p ? (p.product_images || []).sort((a, b) => a.position - b.position).map(i => ({ id: i.id, url: i.url, thumb_url: i.thumb_url })) : [];
   $("f-files").value = "";
   renderImgs();
   toggleSizes();
@@ -263,15 +264,21 @@ $("f-files").onchange = e => {
 };
 
 /* ---------- images ---------- */
-async function shrinkTo(file, max, quality) {
+/* resize to "max" pixels and lower the quality until the file is under "maxBytes" */
+async function shrinkTo(file, max, quality, maxBytes) {
   const bmp = await createImageBitmap(file);
   const r = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const c = document.createElement("canvas");
   c.width = Math.round(bmp.width * r); c.height = Math.round(bmp.height * r);
   c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-  return new Promise(res => c.toBlob(res, "image/webp", quality));
+  const enc = q => new Promise(res => c.toBlob(res, "image/webp", q));
+  let q = quality, blob = await enc(q);
+  while (maxBytes && blob && blob.size > maxBytes && q > 0.45) {
+    q = Math.round((q - 0.08) * 100) / 100;
+    blob = await enc(q);
+  }
+  return blob;
 }
-const shrink = f => shrinkTo(f, 1200, 0.82);
 async function removeFiles(urls) {
   const paths = urls.map(u => (u.split("/product-images/")[1] || "")).filter(Boolean);
   if (paths.length) await db.storage.from("product-images").remove(paths);
@@ -294,6 +301,7 @@ $("m-save").onclick = async () => {
   const row = {
     name, price,
     original_price: $("f-old").value ? parseFloat($("f-old").value) : null,
+    weight_grams: Math.max(1, parseInt($("f-weight").value) || 250),
     has_sizes: has,
     stock: has ? 0 : Math.max(0, parseInt($("f-stock").value) || 0),
     is_stock_out: $("f-out").checked,
@@ -321,7 +329,7 @@ $("m-save").onclick = async () => {
 
     if (removed.length) {
       await db.from("product_images").delete().in("id", removed.map(r => r.id));
-      await removeFiles(removed.map(r => r.url));
+      await removeFiles(removed.flatMap(r => [r.url, r.thumb_url]).filter(Boolean));
     }
 
     for (let i = 0; i < imgs.length; i++) {
@@ -329,12 +337,21 @@ $("m-save").onclick = async () => {
       if (im.id) {
         await db.from("product_images").update({ position: i }).eq("id", im.id);
       } else {
-        const blob = await shrink(im.file);
-        const path = pid + "/" + Date.now() + "-" + i + ".webp";
-        const up = await db.storage.from("product-images").upload(path, blob, { contentType: "image/webp", cacheControl: "31536000" });
+        const stamp = Date.now() + "-" + i;
+        const big = await shrinkTo(im.file, 1000, 0.82, 180000);   // product page: 1000px, about 180 KB at most
+        const small = await shrinkTo(im.file, 420, 0.78, 40000);   // shop grid: 420px, about 40 KB at most
+        const pathBig = pid + "/" + stamp + ".webp";
+        const pathSmall = pid + "/" + stamp + "-t.webp";
+        const up = await db.storage.from("product-images").upload(pathBig, big, { contentType: "image/webp", cacheControl: "31536000" });
         if (up.error) throw up.error;
-        const url = db.storage.from("product-images").getPublicUrl(path).data.publicUrl;
-        const ins = await db.from("product_images").insert({ product_id: pid, url, position: i });
+        const up2 = await db.storage.from("product-images").upload(pathSmall, small, { contentType: "image/webp", cacheControl: "31536000" });
+        if (up2.error) throw up2.error;
+        const url = db.storage.from("product-images").getPublicUrl(pathBig).data.publicUrl;
+        const thumb_url = db.storage.from("product-images").getPublicUrl(pathSmall).data.publicUrl;
+        let ins = await db.from("product_images").insert({ product_id: pid, url, thumb_url, position: i });
+        if (ins.error && /thumb_url/.test(ins.error.message || "")) {
+          ins = await db.from("product_images").insert({ product_id: pid, url, position: i });
+        }
         if (ins.error) throw ins.error;
       }
     }
@@ -707,7 +724,7 @@ $("b-files").onchange = async e => {
   try {
     let pos = bannersCache.reduce((m, b) => Math.max(m, b.position), -1) + 1;
     for (let i = 0; i < files.length; i++) {
-      const blob = await shrinkTo(files[i], 1600, 0.8);
+      const blob = await shrinkTo(files[i], 1600, 0.8, 250000);
       const path = "banners/" + Date.now() + "-" + i + ".webp";
       const up = await db.storage.from("product-images").upload(path, blob, { contentType: "image/webp", cacheControl: "31536000" });
       if (up.error) throw up.error;

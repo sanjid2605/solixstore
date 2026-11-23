@@ -163,7 +163,7 @@
         <div id="b-list"></div>
       </section>
     </main>
-    <div class="hint" style="text-align:center;margin:26px 0 40px">Admin v4</div>
+    <div class="hint" style="text-align:center;margin:26px 0 40px">Admin v5</div>
   </div>
 
   <div id="modal" class="modal hidden">
@@ -173,6 +173,7 @@
       <div class="field"><label>Product name</label><input id="f-name"></div>
       <div class="field"><label>Offer price (selling price)</label><input id="f-price" type="number" min="0"></div>
       <div class="field"><label>Original price (optional)</label><input id="f-old" type="number" min="0"></div>
+      <div class="field"><label>Weight of one piece (grams)</label><input id="f-weight" type="number" min="1" value="250"><div class="hint">Used to work out the delivery charge. A jersey is about 250.</div></div>
 
       <div class="field"><label><input type="checkbox" id="f-has"> This product has sizes (S, M, L, XL, XXL)</label></div>
 
@@ -262,6 +263,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
-  <script src="admin.js?v=4"></script>
+  <script src="admin.js?v=5"></script>
 </body>
 </html>

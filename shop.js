@@ -29,19 +29,11 @@ function dbg(m) {
   b.textContent += m + "\n";
 }
 
-const TAG_LABEL = { top: "TOP SELLING", new: "NEW", featured: "FEATURED" };
-
-function tagText(p) {
-  const t = p.tags || [];
-  for (const k of ["top", "new", "featured"]) if (t.includes(k)) return TAG_LABEL[k];
-  return "";
-}
-
-function cardHtml(p, forceOffer, hideTag) {
+function cardHtml(p, forceOffer) {
   const out = p.is_stock_out || Number(p.total_stock) <= 0;
   const old = p.original_price && Number(p.original_price) > Number(p.price)
     ? `<span class="old">${money(p.original_price)}</span>` : "";
-  const tg = forceOffer ? "OFFER" : (hideTag ? "" : tagText(p));
+  const tg = forceOffer ? "OFFER" : "";
   return `
     <a class="card ${out ? "is-out" : ""}" href="product.html?id=${p.id}">
       <div class="img-wrap">
@@ -88,14 +80,16 @@ async function loadProducts() {
   const from = (page - 1) * C.PAGE_SIZE;
   const to = from + C.PAGE_SIZE - 1;
 
-  let query = db
-    .from("product_list")
-    .select("*", { count: "exact" })
-    .order("created_at", { ascending: false })
-    .range(from, to);
-  if (q) query = query.ilike("name", "%" + q + "%");
-
-  const { data, count, error } = await query;
+  const build = withNew => {
+    let query = db.from("product_list").select("*", { count: "exact" });
+    if (withNew) query = query.order("is_new", { ascending: false });
+    query = query.order("created_at", { ascending: false }).range(from, to);
+    if (q) query = query.ilike("name", "%" + q + "%");
+    return query;
+  };
+  let res = await build(true);
+  if (res.error && /is_new/.test(res.error.message || "")) res = await build(false);
+  const { data, count, error } = res;
   if (my !== reqId) return;
 
   if (error) {
@@ -111,7 +105,7 @@ async function loadProducts() {
   }
 
   totalPages = Math.max(1, Math.ceil(count / C.PAGE_SIZE));
-  grid.innerHTML = data.map(p => cardHtml(p, false, false)).join("");
+  grid.innerHTML = data.map(p => cardHtml(p, false)).join("");
 
   pager.innerHTML = totalPages > 1 ? `
     <button id="prev" ${page <= 1 ? "disabled" : ""}>← Prev</button>
@@ -127,8 +121,8 @@ async function loadProducts() {
 function sectionHtml(title, key, items) {
   return `
     <section class="hsec" data-key="${key}">
-      <h2 class="sec-title">${title}</h2>
-      <div class="sec-row">${items.map(p => cardHtml(p, false, true)).join("")}</div>
+      ${title ? `<h2 class="sec-title">${title}</h2>` : ""}
+      <div class="sec-row">${items.map(p => cardHtml(p, false)).join("")}</div>
     </section>`;
 }
 
@@ -142,9 +136,9 @@ async function loadSections() {
     dbg("featured " + fi.length + ", top " + ti.length + ", new " + ni.length);
 
     const html = [
-      fi.length ? sectionHtml("Featured", "featured", fi) : "",
-      ti.length ? sectionHtml("Top Selling", "top", ti) : "",
-      ni.length ? sectionHtml("New Arrivals", "new", ni) : ""
+      fi.length ? sectionHtml("", "featured", fi) : "",
+      ni.length ? sectionHtml("New Arrivals", "new", ni) : "",
+      ti.length ? sectionHtml("Top Selling", "top", ti) : ""
     ].join("");
     if (!html) return;
 
@@ -229,7 +223,7 @@ function offerHtml(c, items) {
           <div><b class="cd-s">00</b><span>Sec</span></div>
         </div>
       </div>
-      <div class="offer-row">${items.map(p => cardHtml(p, true, true)).join("")}</div>
+      <div class="offer-row">${items.map(p => cardHtml(p, true)).join("")}</div>
     </section>`;
 }
 

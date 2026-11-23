@@ -29,26 +29,20 @@ function selText(sel) {
   return sel.value ? sel.options[sel.selectedIndex].text : "";
 }
 
-/* same formula as the server: the total is grossed up so Pathao's COD percentage is covered */
+/* same formula as the server: Pathao's COD percentage is covered by the total,
+   and the customer simply sees one delivery charge (delivery + COD fee) */
 function figures() {
   const sub = subtotal();
-  if (charge === null) return { sub, cod: 0, total: sub };
+  if (charge === null) return { sub, del: null, total: sub };
   const base = sub + charge;
   const total = codPct > 0 ? Math.ceil(base / (1 - codPct)) : Math.round(base);
-  const cod = codPct > 0 ? Math.round((total - base) * 100) / 100 : 0;
-  return { sub, cod, total };
+  return { sub, del: Math.round((total - sub) * 100) / 100, total };
 }
 
 function renderTotals() {
   const f = figures();
   $("t-sub").textContent = money(f.sub);
-  $("t-del").textContent = charge === null ? "Select city and zone" : money(charge);
-  const showCod = charge !== null && f.cod > 0;
-  $("row-cod").classList.toggle("hidden", !showCod);
-  if (showCod) {
-    $("t-codlabel").textContent = "COD fee (" + (Math.round(codPct * 10000) / 100) + "%)";
-    $("t-cod").textContent = money(f.cod);
-  }
+  $("t-del").textContent = f.del === null ? "Select city and zone" : money(f.del);
   $("t-total").textContent = money(f.total);
 }
 
@@ -65,7 +59,6 @@ function init() {
       ${items.map(i => `<div class="line"><span>${esc(i.name)}${i.size ? " (" + esc(i.size) + ")" : ""} x${i.qty}</span><span>${money(i.price * i.qty)}</span></div>`).join("")}
       <div class="line" style="border-top:1px solid var(--line);padding-top:8px"><span>Subtotal</span><span id="t-sub"></span></div>
       <div class="line"><span>Delivery charge</span><span id="t-del"></span></div>
-      <div class="line hidden" id="row-cod"><span id="t-codlabel">COD fee</span><span id="t-cod"></span></div>
       <div class="line grand"><span>Total</span><span id="t-total"></span></div>
       <div class="muted" style="color:var(--muted);font-size:.85rem;margin-top:8px">Payment: Cash on Delivery</div>
       ${C.MESSENGER_URL ? `<a class="msg-pay" href="${esc(C.MESSENGER_URL)}" target="_blank" rel="noopener"><span class="social-icon" style="margin:0;width:34px;height:34px;flex:0 0 34px">${ICON_MSG}</span><span><b>বিকাশে পেমেন্ট করতে চান?</b><br>আগে আমাদের Messenger-এ মেসেজ দিন</span></a>` : ""}
@@ -99,7 +92,7 @@ function init() {
     try {
       const [a, c] = await Promise.all([
         api("/api/locations?type=areas&zone=" + zone.value),
-        api("/api/delivery-charge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ city: city.value, zone: zone.value }) })
+        api("/api/delivery-charge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ city: city.value, zone: zone.value, items: items.map(i => ({ id: i.id, qty: i.qty })) }) })
       ]);
       fill(area, a.items, "Select area");
       charge = c.charge; codPct = Number(c.cod_pct) || 0; renderTotals();
