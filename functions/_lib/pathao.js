@@ -24,7 +24,7 @@ async function getToken(env) {
     })
   });
   const j = await r.json().catch(() => ({}));
-     if (!r.ok || !j.access_token) throw new Error("Pathao login failed");
+  if (!r.ok || !j.access_token) throw new Error("Pathao login failed");
   cached = { token: j.access_token, exp: now + Math.max(60, (j.expires_in || 7200) - 3600) * 1000 };
   return cached.token;
 }
@@ -44,7 +44,8 @@ export async function pathao(env, method, path, body) {
   return { ok: r.ok, status: r.status, json: j };
 }
 
-export async function getCharge(env, city, zone, weight) {
+/* delivery charge + Pathao's cash-on-delivery percentage for a city and zone */
+export async function getPricing(env, city, zone, weight) {
   const r = await pathao(env, "POST", "/aladdin/api/v1/merchant/price-plan", {
     store_id: String(env.PATHAO_STORE_ID),
     item_type: 2,
@@ -53,7 +54,13 @@ export async function getCharge(env, city, zone, weight) {
     recipient_city: Number(city),
     recipient_zone: Number(zone)
   });
-  const price = r.json && r.json.data && r.json.data.final_price;
-      if (!r.ok || typeof price !== "number") throw new Error("Could not get delivery charge");
-  return price;
+  const d = r.json && r.json.data;
+  const price = d && d.final_price;
+  if (!r.ok || typeof price !== "number") throw new Error("Could not get delivery charge");
+  const pct = Number(d.cod_percentage);
+  return { charge: price, codPct: pct > 0 && pct < 0.5 ? pct : 0 };
+}
+
+export async function getCharge(env, city, zone, weight) {
+  return (await getPricing(env, city, zone, weight)).charge;
 }
