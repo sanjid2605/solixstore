@@ -1,6 +1,7 @@
 const root = document.getElementById("checkout");
 let items = Cart.get();
 let charge = null;
+let codPct = 0;
 
 if (!items.length) {
   root.innerHTML = `<p class="empty">Your cart is empty.<br><br><a class="btn btn-primary" style="display:inline-block;padding:12px 24px" href="index.html">Shop now</a></p>`;
@@ -28,11 +29,27 @@ function selText(sel) {
   return sel.value ? sel.options[sel.selectedIndex].text : "";
 }
 
-function renderTotals() {
+/* same formula as the server: the total is grossed up so Pathao's COD percentage is covered */
+function figures() {
   const sub = subtotal();
-  $("t-sub").textContent = money(sub);
+  if (charge === null) return { sub, cod: 0, total: sub };
+  const base = sub + charge;
+  const total = codPct > 0 ? Math.ceil(base / (1 - codPct)) : Math.round(base);
+  const cod = codPct > 0 ? Math.round((total - base) * 100) / 100 : 0;
+  return { sub, cod, total };
+}
+
+function renderTotals() {
+  const f = figures();
+  $("t-sub").textContent = money(f.sub);
   $("t-del").textContent = charge === null ? "Select city and zone" : money(charge);
-  $("t-total").textContent = charge === null ? money(sub) : money(sub + charge);
+  const showCod = charge !== null && f.cod > 0;
+  $("row-cod").classList.toggle("hidden", !showCod);
+  if (showCod) {
+    $("t-codlabel").textContent = "COD fee (" + (Math.round(codPct * 10000) / 100) + "%)";
+    $("t-cod").textContent = money(f.cod);
+  }
+  $("t-total").textContent = money(f.total);
 }
 
 function init() {
@@ -48,6 +65,7 @@ function init() {
       ${items.map(i => `<div class="line"><span>${esc(i.name)}${i.size ? " (" + esc(i.size) + ")" : ""} x${i.qty}</span><span>${money(i.price * i.qty)}</span></div>`).join("")}
       <div class="line" style="border-top:1px solid var(--line);padding-top:8px"><span>Subtotal</span><span id="t-sub"></span></div>
       <div class="line"><span>Delivery charge</span><span id="t-del"></span></div>
+      <div class="line hidden" id="row-cod"><span id="t-codlabel">COD fee</span><span id="t-cod"></span></div>
       <div class="line grand"><span>Total</span><span id="t-total"></span></div>
       <div class="muted" style="color:var(--muted);font-size:.85rem;margin-top:8px">Payment: Cash on Delivery</div>
       ${C.MESSENGER_URL ? `<a class="msg-pay" href="${esc(C.MESSENGER_URL)}" target="_blank" rel="noopener"><span class="social-icon" style="margin:0;width:34px;height:34px;flex:0 0 34px">${ICON_MSG}</span><span><b>বিকাশে পেমেন্ট করতে চান?</b><br>আগে আমাদের Messenger-এ মেসেজ দিন</span></a>` : ""}
@@ -64,7 +82,7 @@ function init() {
     .catch(() => showToast("Could not load cities. Refresh the page."));
 
   city.onchange = async () => {
-    charge = null; renderTotals();
+    charge = null; codPct = 0; renderTotals();
     fill(zone, [], "Select zone"); fill(area, [], "Select area");
     if (!city.value) return;
     zone.innerHTML = `<option value="">Loading...</option>`;
@@ -75,7 +93,7 @@ function init() {
   };
 
   zone.onchange = async () => {
-    charge = null; renderTotals();
+    charge = null; codPct = 0; renderTotals();
     fill(area, [], "Select area");
     if (!zone.value) return;
     try {
@@ -84,7 +102,7 @@ function init() {
         api("/api/delivery-charge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ city: city.value, zone: zone.value }) })
       ]);
       fill(area, a.items, "Select area");
-      charge = c.charge; renderTotals();
+      charge = c.charge; codPct = Number(c.cod_pct) || 0; renderTotals();
     } catch (e) { showToast(e.message); }
   };
 
