@@ -1,4 +1,4 @@
-import { pathao, json, getCharge } from "../_lib/pathao.js";
+import { pathao, json, getPricing } from "../_lib/pathao.js";
 
 const SIZES = ["S", "M", "L", "XL", "XXL"];
 const WEIGHT = 0.5; // kg per order
@@ -69,25 +69,37 @@ export async function onRequestPost({ request, env }) {
     totalQty += l.qty;
   }
 
-  let charge;
-  try { charge = await getCharge(env, city, zone, WEIGHT); }
+  let pricing;
+  try { pricing = await getPricing(env, city, zone, WEIGHT); }
   catch (e) { return json({ error: "Could not calculate delivery charge. Try again." }, 502); }
+  const charge = pricing.charge;
 
-  const total = Math.round(subtotal + charge);
+  // Pathao takes its COD percentage from the whole amount it collects, so the
+  // customer's total is grossed up to cover that fee (rounded up).
+  const base = subtotal + charge;
+  const total = pricing.codPct > 0 ? Math.ceil(base / (1 - pricing.codPct)) : Math.round(base);
+  const codFee = pricing.codPct > 0 ? Math.round((total - base) * 100) / 100 : 0;
   const stockPayload = orderItems.map(i => ({ id: i.id, size: i.size, qty: i.qty }));
 
   const rs = await sb(env, "/rest/v1/rpc/reserve_stock", { method: "POST", body: JSON.stringify({ p_items: stockPayload }) });
   if (!rs.ok) return json({ error: "Sorry, some items just went out of stock." }, 409);
 
-  const ins = await sb(env, "/rest/v1/orders", {
+  const row = {
+    customer_name: name, phone, city: cityName, zone: zoneName, area: areaName, address,
+    items: orderItems, subtotal, delivery_charge: charge, cod_fee: codFee, total,
+    status: "new", pathao_status: "pending"
+  };
+  const post = body => sb(env, "/rest/v1/orders", {
     method: "POST",
     headers: { Prefer: "return=representation" },
-    body: JSON.stringify({
-      customer_name: name, phone, city: cityName, zone: zoneName, area: areaName, address,
-      items: orderItems, subtotal, delivery_charge: charge, total,
-      status: "new", pathao_status: "pending"
-    })
+    body: JSON.stringify(body)
   });
+  let ins = await post(row);
+  if (!ins.ok && /cod_fee/.test(JSON.stringify(ins.data))) {
+    // the cod_fee column does not exist yet: save without it
+    const { cod_fee, ...withoutFee } = row;
+    ins = await post(withoutFee);
+  }
   if (!ins.ok || !Array.isArray(ins.data) || !ins.data[0]) {
     await sb(env, "/rest/v1/rpc/release_stock", { method: "POST", body: JSON.stringify({ p_items: stockPayload }) });
     return json({ error: "Could not save order. Try again." }, 500);
@@ -120,10 +132,11 @@ export async function onRequestPost({ request, env }) {
     method: "PATCH",
     body: JSON.stringify({ pathao_consignment_id: consignment ? String(consignment) : null, pathao_status: status })
   });
-   try {
+
+  try {
     if (env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID) {
-      const lines = orderItems.map(i => `${i.name}${i.size ? " (" + i.size + ")" : ""} x${i.qty}`).join("\n");
-      const text = `New order #${order.id.slice(0, 8).toUpperCase()}\n${name}\n${phone}\n${[address, areaName, zoneName, cityName].filter(Boolean).join(", ")}\n\n${lines}\n\nTotal (COD): ${total}\nPathao: ${status}`;
+      const lines2 = orderItems.map(i => `${i.name}${i.size ? " (" + i.size + ")" : ""} x${i.qty}`).join("\n");
+      const text = `New order #${order.id.slice(0, 8).toUpperCase()}\n${name}\n${phone}\n${[address, areaName, zoneName, cityName].filter(Boolean).join(", ")}\n\n${lines2}\n\nTotal (COD): ${total}\nPathao: ${status}`;
       await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -131,5 +144,6 @@ export async function onRequestPost({ request, env }) {
       });
     }
   } catch (e) {}
-  return json({ ok: true, orderNo: order.id.slice(0, 8).toUpperCase(), subtotal, charge, total });
+
+  return json({ ok: true, orderNo: order.id.slice(0, 8).toUpperCase(), subtotal, charge, codFee, total });
 }

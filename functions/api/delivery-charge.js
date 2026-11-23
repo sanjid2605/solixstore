@@ -1,4 +1,4 @@
-import { json, getCharge } from "../_lib/pathao.js";
+import { json, getPricing } from "../_lib/pathao.js";
 
 export async function onRequestPost({ request, env }) {
   let b;
@@ -7,9 +7,9 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Select city and zone" }, 400);
   }
   try {
-    const charge = await getCharge(env, b.city, b.zone);
-    return json({ charge });
+    const p = await getPricing(env, b.city, b.zone);
+    return json({ charge: p.charge, cod_pct: p.codPct });
   } catch (e) {
-            return json({ error: "Could not calculate delivery charge" }, 502);
+    return json({ error: "Could not calculate delivery charge" }, 502);
   }
 }
