@@ -1,24 +1,6 @@
-import { pathao, json, getPricing } from "../_lib/pathao.js";
+import { pathao, json, getPricing, sb, cartWeightKg } from "../_lib/pathao.js";
 
 const SIZES = ["S", "M", "L", "XL", "XXL"];
-const WEIGHT = 0.5; // kg per order
-
-async function sb(env, path, opts = {}) {
-  const key = String(env.SUPABASE_SERVICE_KEY);
-  const r = await fetch(env.SUPABASE_URL.replace(/\/$/, "") + path, {
-    ...opts,
-    headers: {
-      apikey: key,
-      ...(key.startsWith("eyJ") ? { Authorization: "Bearer " + key } : {}),
-      "Content-Type": "application/json",
-      ...(opts.headers || {})
-    }
-  });
-  const text = await r.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
-  return { ok: r.ok, data };
-}
 
 export async function onRequestPost({ request, env }) {
   let b;
@@ -69,8 +51,9 @@ export async function onRequestPost({ request, env }) {
     totalQty += l.qty;
   }
 
+  const weight = await cartWeightKg(env, lines);
   let pricing;
-  try { pricing = await getPricing(env, city, zone, WEIGHT); }
+  try { pricing = await getPricing(env, city, zone, weight); }
   catch (e) { return json({ error: "Could not calculate delivery charge. Try again." }, 502); }
   const charge = pricing.charge;
 
@@ -120,7 +103,7 @@ export async function onRequestPost({ request, env }) {
       item_type: 2,
       special_instruction: "",
       item_quantity: totalQty,
-      item_weight: String(WEIGHT),
+      item_weight: String(weight),
       item_description: desc,
       amount_to_collect: total
     });
